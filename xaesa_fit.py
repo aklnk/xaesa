@@ -246,7 +246,7 @@ class FitWindow(QtGui.QDialog):
         self.btnOpenFeff.clicked.connect(self.openfeff)
         
         self.btnSaveFitResults = QtGui.QPushButton('Save fit Results ...')
-        self.btnSaveFitResults.clicked.connect(self.saveFitResults)
+#        self.btnSaveFitResults.clicked.connect(self.saveFitResults)
         
         lb = QtGui.QGridLayout()
         lb.addWidget(self.btnOpenAmp, 0,0)

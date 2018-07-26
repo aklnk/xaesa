@@ -22,7 +22,7 @@ from .xaesa_constants_formulas import    victoreen, windowGauss10, \
                                          
 from .xaesa_ft import FT, BFT, GETPHASE, BFTWindow
 
-import xalglib
+#import xalglib
 
 class xaesa_exafs_class():
     def __init__(self, init_raw_data_type):

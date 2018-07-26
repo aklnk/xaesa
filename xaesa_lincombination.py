@@ -238,9 +238,9 @@ class LCWindow(QtGui.QDialog):
             if self.mju_exafs == 2: 
                 basis.append(self.mainform.dataClasses[y].xesAreaNorm)
             if self.mju_exafs == 1: 
-                basis.append(self.mainform.exafsd[y])
+                basis.append(self.mainform.dataClasses[y].exafsZLC)
             if self.mju_exafs == 0:
-                basis.append(self.mainform.mju_bc[y])
+                basis.append(self.mainform.dataClasses[y].mjuMinusVictoreen)
             basisi.append(y)
             variables.append(1)
             varbounds[0].append(0)
@@ -252,9 +252,9 @@ class LCWindow(QtGui.QDialog):
             if self.mju_exafs == 2: 
                 fit = self.mainform.dataClasses[y].xesAreaNorm
             if self.mju_exafs == 1:
-                fit = self.mainform.exafsd[y]
+                fit = self.mainform.dataClasses[y].exafsZLC
             if self.mju_exafs == 0:
-                fit = self.mainform.mju_bc[y]
+                fit = self.mainform.dataClasses[y].mjuMinusVictoreen
         
 #        lin_comb_func(np.array([1,1]), np.array(basis), np.array(fit))    
             lsq_result = least_squares(lin_comb_func, np.array(variables), \
@@ -281,9 +281,9 @@ class LCWindow(QtGui.QDialog):
             if self.mju_exafs == 2:
                 k_energy = self.mainform.dataClasses[y].energy
             if self.mju_exafs == 1:
-                k_energy = self.mainform.k[y]
+                k_energy = self.mainform.dataClasses[y].k
             if self.mju_exafs == 0:
-                k_energy = self.mainform.energy[y]
+                k_energy = self.mainform.dataClasses[y].energy
 
             
             self.exafs_line.set_xdata(k_energy)
@@ -314,20 +314,20 @@ class LCWindow(QtGui.QDialog):
                 if self.mju_exafs == 2:
                     basis.append(self.mainform.dataClasses[self.fit_basis[current][i]].xesAreaNorm)
                 if self.mju_exafs == 1:
-                    basis.append(self.mainform.exafsd[self.fit_basis[current][i]])
+                    basis.append(self.mainform.dataClasses[self.fit_basis[current][i]].exafsZLC)
                 if self.mju_exafs == 0:
-                    basis.append(self.mainform.mju_bc[self.fit_basis[current][i]])
+                    basis.append(self.mainform.dataClasses[self.fit_basis[current][i]].mjuMinusVictoreen)
                 basisi.append(current)
              
             if self.mju_exafs == 2:
                 k_energy = self.mainform.dataClasses[current].energy
                 abs_exafs = self.mainform.dataClasses[current].xesAreaNorm
             if self.mju_exafs == 1:
-                k_energy = self.mainform.k[current]
-                abs_exafs = self.mainform.exafsd[current]
+                k_energy = self.mainform.dataClasses[current].k
+                abs_exafs = self.mainform.dataClasses[current].exafsZLC
             if self.mju_exafs == 0:
-                k_energy = self.mainform.energy[current]
-                abs_exafs = self.mainform.mju_bc[current]                
+                k_energy = self.mainform.dataClasses[current].energy
+                abs_exafs = self.mainform.dataClasses[current].mjuMinusVictoreen                
             
             func = lin_comb_func(self.fit_result[current], np.array(basis), np.array(abs_exafs))
             

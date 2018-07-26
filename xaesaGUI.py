@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Oct  7 12:25:31 2016
-
-@author: sasha
-"""
+#"""
+#Created on Fri Oct  7 12:25:31 2016
+#
+#@author: sasha
+#"""
 
 XAESA_VERSION = "0.01"
 GUI_SETTINGS_ID = "XAESA" + XAESA_VERSION
@@ -258,6 +258,7 @@ class MyWindow(QtGui.QMainWindow):
         self.chkDataTypeXes = QtGui.QPushButton("XES")
         self.chkDataTypeExafs = QtGui.QPushButton("EXAFS")
         self.chkDataTypeTrans = QtGui.QPushButton("Transient")
+        self.chkDataTypeTrans.setVisible(False)
         self.chkDataTypeMju.setCheckable(True)
         self.chkDataTypeXes.setCheckable(True)
         self.chkDataTypeExafs.setCheckable(True)
@@ -764,8 +765,8 @@ class MyWindow(QtGui.QMainWindow):
         self.mnuSaveXAS.addAction('Save BFT...', self.savebft)
         
         self.mnuSaveXES = QtGui.QMenu()
-        self.mnuSaveXES.addAction('Save XES...', self.compareXes)
-        self.mnuSaveXES.addAction('Save XES area normalized...', self.compareXesAnorm)
+        self.mnuSaveXES.addAction('Save XES...', self.saveXes)
+        self.mnuSaveXES.addAction('Save XES area normalized...', self.saveXesAnorm)
 
         self.btnSaveXas = QtGui.QPushButton('Save ...')
 #        self.btnSaveXas.setMenu(self.mnuSaveXAS)
@@ -2279,7 +2280,9 @@ class MyWindow(QtGui.QMainWindow):
         self.w.plot()
 
         if self.w.exec_():
-            self.dataClasses[cnr].exafsZLCdeglitch = copy(self.w.exafsdg)    
+            self.dataClasses[cnr].exafsZLCdeglitch = copy(self.w.exafsdg) 
+            self.dataClasses[cnr].exafsZLC = copy(self.w.exafsdg) 
+            self.dataClasses[cnr].redoFtBft()
 #            self.glitchesRemoved[cnr] = 1
             
 #        self.ees_ft()
