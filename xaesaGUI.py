@@ -5,12 +5,12 @@
 #@author: sasha
 #"""
 
-XAESA_VERSION = "0.01"
+XAESA_VERSION = "0.03"
 GUI_SETTINGS_ID = "XAESA" + XAESA_VERSION
 
 import sys
 from sys import exit, argv, version
-from os import path, getcwd
+from os import path, getcwd, getpid
 
 import matplotlib.pyplot as plt
 from matplotlib import __version__ as mpl_version
@@ -19,9 +19,10 @@ __path__=[path.dirname(path.abspath(__file__))]
 
 from .init import QTVer
 from .xaesa_exafs_class import xaesa_exafs_class
-from .xaesa_xes_class import xaesa_xes_class
+from .xaesa_xes_class import xaesa_xes_class, xaesa_transient_class
 from .xaesa_settings import xaesa_settings
 from .xaesa_viewer import xaesa_viewer, xaesaViewerWindow
+from .xaesa_rxes import xaesa_rxes, xaesaRxesWindow
 
 import h5py
 
@@ -57,7 +58,7 @@ if QTVer == 5:
 
 from numpy import asarray, fromstring, genfromtxt, gradient, argmax, zeros, sqrt, sin, transpose, \
                     array, savetxt, copy, delete, arange, exp, argmin, concatenate, all, diff,  \
-                    append
+                    append, where, absolute, logical_and, delete, reshape
 
 #from .ft import FT, BFTWindow, BFT, GETPHASE
 
@@ -74,8 +75,16 @@ from .xaesa_rdf import RdfWindow, MyStream
 
 from .compare import CompareWindow
 from .xaesa_lincombination import LCWindow
+from .xaesa_pca import PCAWindow
+
+from scipy.integrate import simps
 
 #from matplotlib.widgets import RectangleSelector
+
+polPowerXES = 1
+
+def format_coord(x, y):
+    return 'x=%1.4f, y=%1.4f' % (x, y)
 
 class MyWindow(QtGui.QMainWindow):
     
@@ -92,8 +101,10 @@ class MyWindow(QtGui.QMainWindow):
         self.skiplines = 0
         self.energycol = 0
         self.exafscol = 1
+        self.refcol = -1
         self.i0col = 7
         self.i1col = 8
+        self.i2col = -1
         
         self.fluocol = [11,12,13,15,16,17]
         self.setWindowTitle("XAESA - X-ray Absorption and Emission Analytics")
@@ -129,6 +140,9 @@ class MyWindow(QtGui.QMainWindow):
         ampPhaSaveAction = QtGui.QAction('Save amplitude and phase ...', self)
         ampPhaSaveAction.triggered.connect(self.ampPhaSave)
         
+#        rxesAction = QtGui.QAction('Plot RXES plane ...', self)
+#        rxesAction.triggered.connect(self.makeRxesPlane, lambda: self.compare('i0'))
+        
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(savehdf5Action)
@@ -138,6 +152,9 @@ class MyWindow(QtGui.QMainWindow):
         
         toolsMenu = menubar.addMenu('&Tools')
         toolsMenu.addAction(ampPhaSaveAction)
+        toolsMenu.addAction('Plot RXES plane ...', lambda: self.makeRxesPlane(False))
+        toolsMenu.addAction('Plot RXES plane (energy transfer) ...', lambda: self.makeRxesPlane(True))
+        toolsMenu.addAction('Shift energy scale according reference (last selected spectrum)', self.shiftEnergyRef)
         
         settingsMenu = menubar.addMenu('&Settings')
         self.xaesaSettings = xaesa_settings()
@@ -192,7 +209,7 @@ class MyWindow(QtGui.QMainWindow):
         self.lstSpectraMenu.addAction("DW factor correction", self.dwcorrection)
         self.lstSpectraMenu.addAction("Shift energy scale by constant", self.shiftenergyscale) 
         self.lstSpectraMenu.addSeparator()        
-        self.lstSpectraMenu.addAction("Compare Mju", self.comparemju)        
+        self.lstSpectraMenu.addAction("Compare mu", self.comparemju)        
         self.lstSpectraMenu.addAction("Compare EXAFS", self.compareexafs)        
         self.lstSpectraMenu.addAction("Compare FT", self.compareft)        
         self.lstSpectraMenu.addAction("Compare BFT", self.comparebft)
@@ -208,16 +225,20 @@ class MyWindow(QtGui.QMainWindow):
         
         self.lblSkipLines = QtGui.QLabel("Skip lines")
         self.lblDataX = QtGui.QLabel("Energy")
-        self.lblDataY = QtGui.QLabel("Mju")
+        self.lblDataY = QtGui.QLabel("mu")
+        self.lblDataY1 = QtGui.QLabel("mu ref")
         self.lblI0Col = QtGui.QLabel("I0 column")
-        self.lblI1Col = QtGui.QLabel("I columns")
+        self.lblI1Col = QtGui.QLabel("I1 column")
+        self.lblI2Col = QtGui.QLabel("I2 column")
 #        self.lblFluoCols = QtGui.QLabel("Fluo columns")
         
         self.edtSkipLines = QtGui.QLineEdit(str(self.skiplines))
         self.edtEnergyCol = QtGui.QLineEdit(str(self.energycol))
         self.edtExafsCol = QtGui.QLineEdit(str(self.exafscol))
+        self.edtRefCol = QtGui.QLineEdit(str(self.refcol))
         self.edtI0Col = QtGui.QLineEdit(str(self.i0col))
         self.edtICol = QtGui.QLineEdit(str(self.i1col))
+        self.edtI2Col = QtGui.QLineEdit(str(self.i2col))
         self.edtFluoCols = QtGui.QLineEdit("11 12 13 15 16 17")
         self.edtFluoCols.hide()
         
@@ -229,6 +250,9 @@ class MyWindow(QtGui.QMainWindow):
         
         self.edtExafsCol.setFixedWidth(30)
         self.edtExafsCol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+
+        self.edtRefCol.setFixedWidth(30)
+        self.edtRefCol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
         self.edtI0Col.setFixedWidth(30)
         self.edtI0Col.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
@@ -254,7 +278,7 @@ class MyWindow(QtGui.QMainWindow):
         self.gb3.setFlat(True)
         
         #experiment type
-        self.chkDataTypeMju = QtGui.QPushButton("Mju")
+        self.chkDataTypeMju = QtGui.QPushButton("mu")
         self.chkDataTypeXes = QtGui.QPushButton("XES")
         self.chkDataTypeExafs = QtGui.QPushButton("EXAFS")
         self.chkDataTypeTrans = QtGui.QPushButton("Transient")
@@ -337,6 +361,8 @@ class MyWindow(QtGui.QMainWindow):
         lopenparams.addWidget(self.edtEnergyCol, 2, 1)
         lopenparams.addWidget(self.lblDataY, 2, 2)
         lopenparams.addWidget(self.edtExafsCol, 2, 3)
+        lopenparams.addWidget(self.lblDataY1, 2, 4)
+        lopenparams.addWidget(self.edtRefCol, 2, 5)
 
         lopenparams.addWidget(self.gb2, 3, 0, 1, 2)
         lopenparams.addWidget(self.gb3, 3, 3, 1, 3)
@@ -345,6 +371,8 @@ class MyWindow(QtGui.QMainWindow):
         lopenparams.addWidget(self.edtI0Col, 4, 1)
         lopenparams.addWidget(self.lblI1Col, 4, 2)        
         lopenparams.addWidget(self.edtICol, 4, 3)
+        lopenparams.addWidget(self.lblI2Col, 4, 4)
+        lopenparams.addWidget(self.edtI2Col, 4, 5)
         lopenparams.addWidget(self.edtFluoCols, 4, 3)
         
         
@@ -379,7 +407,8 @@ class MyWindow(QtGui.QMainWindow):
         self.deriv_line, = self.ax_abs2.plot([],[])
         self.deriv_line.set_color('b')
         self.deriv_line.set_alpha(0.3)
-        
+
+        self.lineEs = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
         self.lineE0 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
         self.lineE1 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
         self.lineE2 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
@@ -489,6 +518,8 @@ class MyWindow(QtGui.QMainWindow):
         self.ax_xes.set_xlabel('Energy, eV')
         self.ax_xes.set_ylabel('Emission intensity, a.u.')
         
+#        self.ax_xes.format_coord = format_coord
+        
         
         self.ax_xes_bc = plt.subplot2grid((2,2), (0,1))
         
@@ -510,6 +541,11 @@ class MyWindow(QtGui.QMainWindow):
         
         self.canvXes = FigureCanvas(self.figXes)
         self.tbarXes = NavigationToolbar(self.canvXes, self)
+        
+        fnt = self.tbarXes.font()
+        fnt.setPointSize(20)
+        self.tbarXes.setFont(fnt)
+        
         
 #        self.ax_ft.set_xlabel('Distance R, $\AA$')
 #        self.ax_ft.set_ylabel('Fourier transform, $\AA^{-3}$')
@@ -585,31 +621,87 @@ class MyWindow(QtGui.QMainWindow):
         self.frameXesParams.hide()
         
         
+    ######################   XES traansient parameters
+        lblEMinSmoothTrans = QtGui.QLabel("Emin for smoothing")
+        lblEMaxSmoothTrans = QtGui.QLabel("Emax for smoothing")
+        lblSmoothFactor = QtGui.QLabel("Smoothing factor")       
+        self.edtEMinSmoothTrans = QtGui.QLineEdit()
+        self.edtEMaxSmoothTrans = QtGui.QLineEdit()
+        self.edtSmoothFactor = QtGui.QLineEdit()
+        
+        lblInt1 = QtGui.QLabel("Transient integral")
+        lblInt2 = QtGui.QLabel("Smoothed transient integral")
+        lblError = QtGui.QLabel("Difference")
+        
+        self.edtInt1Show = QtGui.QLineEdit("")
+        self.edtInt2Show = QtGui.QLineEdit("")
+        self.edtErrorShow = QtGui.QLineEdit("")
+        
+        
+        self.edtEMinSmoothTrans.returnPressed.connect(self.transChange)
+        self.edtEMaxSmoothTrans.returnPressed.connect(self.transChange)
+        self.edtSmoothFactor.returnPressed.connect(self.transChange)
+        
+        lparams = QtGui.QGridLayout()
+        
+        lparams.addWidget(lblEMinSmoothTrans, 0, 0)
+        lparams.addWidget(lblEMaxSmoothTrans, 1, 0)
+        lparams.addWidget(lblSmoothFactor, 2, 0)
+        
+        lparams.addWidget(self.edtEMinSmoothTrans, 0, 1)
+        lparams.addWidget(self.edtEMaxSmoothTrans, 1, 1)
+        lparams.addWidget(self.edtSmoothFactor, 2, 1)
+        
+        lparams.addWidget(lblInt1, 0, 2)
+        lparams.addWidget(lblInt2, 1, 2)
+        lparams.addWidget(lblError, 2, 2)
+        lparams.addWidget(self.edtInt1Show, 0, 3)
+        lparams.addWidget(self.edtInt2Show, 1, 3)
+        lparams.addWidget(self.edtErrorShow, 2, 3)
+        
+        
+        self.frameTransParams = QtGui.QFrame()
+        self.frameTransParams.setFrameShape(QtGui.QFrame.Panel)
+        self.frameTransParams.setFrameShadow(QtGui.QFrame.Sunken)
+        self.frameTransParams.setLayout(lparams)
+        self.frameTransParams.hide()
+        
+        
 #XES parameters END     
 
         #Energy params
+        self.lblEs = QtGui.QLabel("Es")
         self.lblE0 = QtGui.QLabel("E0")
         self.lblE1 = QtGui.QLabel("E1")
         self.lblE2 = QtGui.QLabel("E2")
         self.lblE3 = QtGui.QLabel("E3")
         self.chkExafsNormalization = QtGui.QCheckBox("Normalize by edge at energy")
-        self.lblkpow = QtGui.QLabel("k power")
-        self.lblsm = QtGui.QLabel("3rd zero-line correction (zlc)")
-        self.lblmju0poldegree = QtGui.QLabel("Mju0 polynomial degree")
+        self.chkReduceK = QtGui.QCheckBox("Reduce k points (averaging)")
+        self.chkReduceK.clicked.connect(self.extractParamsChange)
+        self.lblkpow = QtGui.QLabel("k^n")
+        self.lblEnergyShift = QtGui.QLabel("Energy scale shift")
+        self.lblsm = QtGui.QLabel("Zero-line correction (zlc)")
+        self.lblmju0poldegree = QtGui.QLabel("Mu0 polynomial degree")
+        self.edtEs = QtGui.QLineEdit()
         self.edtE0 = QtGui.QLineEdit()
         self.edtE1 = QtGui.QLineEdit()
         self.edtE2 = QtGui.QLineEdit()
         self.edtE3 = QtGui.QLineEdit()
         self.edtExafsNormEnergy = QtGui.QLineEdit()
         self.edtkpow = QtGui.QLineEdit("2")
+        self.edtEnergyShift = QtGui.QLineEdit("0")
+        self.edtEnergyShift.setEnabled(False)
         self.edtsm = QtGui.QLineEdit("0")
         self.edtmju0poldegree = QtGui.QLineEdit("4")
         self.btnDeglitching = QtGui.QPushButton('Remove glitches ...')
         self.btnDeglitching.clicked.connect(self.removeglitches)
         
         
+        
         lparams = QtGui.QGridLayout()
         lparams1 = QtGui.QHBoxLayout()
+        lparams1.addWidget(self.lblEs)
+        lparams1.addWidget(self.edtEs)
         lparams1.addWidget(self.lblE0)
         lparams1.addWidget(self.edtE0)
         lparams1.addWidget(self.lblE1)
@@ -619,27 +711,24 @@ class MyWindow(QtGui.QMainWindow):
         lparams1.addWidget(self.lblE3)
         lparams1.addWidget(self.edtE3)
         lparams.addLayout(lparams1, 0,0,1,4)
+        
         lparams.addWidget(self.chkExafsNormalization, 1, 0)
         lparams.addWidget(self.edtExafsNormEnergy, 1, 1)
-#        lparams.addWidget(self.lblE0, 0, 0)
-#        lparams.addWidget(self.lblE1, 0, 1)
-#        lparams.addWidget(self.lblE2, 0, 2)
-#        lparams.addWidget(self.lblE3, 0, 3)
-        lparams.addWidget(self.lblkpow, 2, 2)
+        lparams.addWidget(self.chkReduceK, 1, 2, 1, 2)
+
+        lparams2 = QtGui.QHBoxLayout()
+        lparams2.addWidget(self.lblsm)
+        lparams2.addWidget(self.edtsm)
+        lparams2.addWidget(self.lblkpow)
+        lparams2.addWidget(self.edtkpow)
+        lparams2.addWidget(self.lblEnergyShift)
+        lparams2.addWidget(self.edtEnergyShift)
+        lparams.addLayout(lparams2, 2,0,1,4)
         
-        
-        
-        
-#        lparams.addWidget(self.edtE0, 1, 0)
-#        lparams.addWidget(self.edtE1, 1, 1)
-#        lparams.addWidget(self.edtE2, 1, 2)
-#        lparams.addWidget(self.edtE3, 1, 3)
-        lparams.addWidget(self.edtkpow, 2, 3)
-        lparams.addWidget(self.lblsm, 2, 0)
-        lparams.addWidget(self.edtsm, 2, 1)
         lparams.addWidget(self.lblmju0poldegree, 3, 0)
         lparams.addWidget(self.edtmju0poldegree, 3, 1)
         lparams.addWidget(self.btnDeglitching, 3, 2, 1, 2)
+        self.edtEs.returnPressed.connect(self.extractParamsChange)
         self.edtE0.returnPressed.connect(self.extractParamsChange)
         self.edtE1.returnPressed.connect(self.extractParamsChange)
         self.edtE2.returnPressed.connect(self.extractParamsChange)
@@ -733,7 +822,7 @@ class MyWindow(QtGui.QMainWindow):
         
         #compare buttons
         self.mnuCompareXAS = QtGui.QMenu()
-        self.mnuCompareXAS.addAction('Compare mju...', self.comparemju)
+        self.mnuCompareXAS.addAction('Compare mu...', self.comparemju)
         self.mnuCompareXAS.addAction('Compare XANES...', self.comparexanes)
         self.mnuCompareXAS.addAction('Compare EXAFS...', self.compareexafs)
         self.mnuCompareXAS.addAction('Compare FT...', self.compareft)
@@ -741,12 +830,14 @@ class MyWindow(QtGui.QMainWindow):
         self.mnuCompareXAS.addSeparator()
         self.mnuCompareXAS.addAction('Compare i0', lambda: self.compare('i0'))
         self.mnuCompareXAS.addAction('Compare i1', lambda: self.compare('i1'))
+        self.mnuCompareXAS.addAction('Compare i2', lambda: self.compare('i2'))
         self.mnuCompareXAS.addAction('Compare i fluorescence', lambda: self.compare('ifluo'))
+        self.mnuCompareXAS.addAction('Compare mu ref', lambda: self.compare('muref'))
         self.mnuCompareXAS.addSeparator()
         self.mnuCompareXAS.addAction('Compare amplitude', lambda: self.compare('amp'))
         self.mnuCompareXAS.addAction('Compare phase', lambda: self.compare('pha'))
         self.mnuCompareXAS.addSeparator()
-        self.mnuCompareXAS.addAction('Compare mju rebin vs original', lambda: self.compare('mjuRebinVSoriginal'))
+        self.mnuCompareXAS.addAction('Compare mu rebin vs original', lambda: self.compare('mjuRebinVSoriginal'))
 #        
         self.mnuCompareXES = QtGui.QMenu()
         self.mnuCompareXES.addAction('Compare XES...', self.compareXes)
@@ -758,7 +849,7 @@ class MyWindow(QtGui.QMainWindow):
         
         #save buttons
         self.mnuSaveXAS = QtGui.QMenu()
-        self.mnuSaveXAS.addAction('Save mju...', self.savemju)
+        self.mnuSaveXAS.addAction('Save mu...', self.savemju)
         self.mnuSaveXAS.addAction('Save XANES...', self.savexanes)
         self.mnuSaveXAS.addAction('Save EXAFS...', self.saveexafs)
         self.mnuSaveXAS.addAction('Save FT...', self.saveft)
@@ -778,18 +869,20 @@ class MyWindow(QtGui.QMainWindow):
         l1.addLayout(lh)
 
         self.chkSaveinOneFile = QtGui.QCheckBox("Save selected in single file")        
-        self.chkSaveinOneFile.setChecked(True)
+        self.chkSaveinOneFile.setChecked(False)
     
         
         l1.addLayout(lh)
         l1.addWidget(self.chkSaveinOneFile)
 
 
-        self.btnAverage = QtGui.QPushButton('Average')
+        self.btnAverage = QtGui.QPushButton('Average / merge')
         
         self.mnuAverageXAS = QtGui.QMenu()
-        self.mnuAverageXAS.addAction('Average mju', self.averageMju)
+        self.mnuAverageXAS.addAction('Average mu', self.averageMju)
         self.mnuAverageXAS.addAction('Average EXAFS', self.averageExafs)
+        self.mnuAverageXAS.addAction('Merge mu', self.mergeMju)
+        
         
         self.mnuAverageXES = QtGui.QMenu()
         self.mnuAverageXES.addAction('Average XES', self.averageXes)
@@ -802,22 +895,21 @@ class MyWindow(QtGui.QMainWindow):
         action.setDefaultWidget(self.edtRbfSmooth)
         
         self.mnuRebinXAS = QtGui.QMenu()
-        self.mnuRebinXAS.addAction('Rebin mju', self.rebinMju)
+        self.mnuRebinXAS.addAction('Rebin mu', self.rebinMju)
         self.mnuRebinXAS.addSeparator()
         self.mnuRebinXAS.addAction(action)
-        self.mnuRebinXAS.addAction('Rebin mju-RBF-smooth', self.rebinMjuRbfSmooth)
+        self.mnuRebinXAS.addAction('Rebin mu-RBF-smooth', self.rebinMjuRbfSmooth)
         self.mnuRebinXAS.addSeparator()
         self.mnuRebinXAS.addAction('Rebin EXAFS', self.rebinExafs)
-        self.mnuRebinXAS.addAction('Return to original mju', self.backToOriginalMju)
-        
+        self.mnuRebinXAS.addAction('Return to original mu', self.backToOriginalMju)    
 
-        
-        
         self.mnuRebinXES = QtGui.QMenu()
         self.mnuRebinXES.addAction('Rebin XES', self.rebinXes)
 
         self.btnLinCombination = QtGui.QPushButton('Linear combination...')
         self.btnLinCombination.clicked.connect(self.LinCombination)
+        self.btnPCA = QtGui.QPushButton('PCA analysis...')
+        self.btnPCA.clicked.connect(self.pcaAnalysis)
 #        self.chkPicker = QtGui.QCheckBox("Allow to remove experimental points")
 #        self.chkPicker.stateChanged.connect(self.redraw_for_remove)
 
@@ -836,6 +928,7 @@ class MyWindow(QtGui.QMainWindow):
         lbtn.addWidget(self.btnAverage, 1, 0)
         lbtn.addWidget(self.btnRebin, 1, 1)
         lbtn.addWidget(self.btnLinCombination, 2, 0, 1, 2)
+        lbtn.addWidget(self.btnPCA, 3, 0, 1, 2)
 
         layout = QtGui.QGridLayout()
         layout.addLayout(l1,      0, 0)
@@ -845,7 +938,8 @@ class MyWindow(QtGui.QMainWindow):
 
         layout.addLayout(lbtn, 1, 0)
         layout.addWidget(self.frameLParams, 1, 1)
-        layout.addWidget(self.frameXesParams, 1, 1)        
+        layout.addWidget(self.frameXesParams, 1, 1)  
+        layout.addWidget(self.frameTransParams, 1, 1)
         layout.addWidget(self.frameLFTParams, 1, 2)
         layout.addWidget(self.frameLBFTParams, 1, 3)
         
@@ -902,11 +996,12 @@ class MyWindow(QtGui.QMainWindow):
         dlg = QtGui.QFileDialog()
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
-        dlg.setNameFilters(["XDI files (*.xdi)",
+        dlg.setNameFilters(["All files (*.*)",
+                            "XDI files (*.xdi)",
                             "FIO files (*.fio)", 
                             "Text files (*.txt)", 
                             "DAT files (*.dat)", 
-                            "All files (*.*)"])
+                            "XES files (*.xes)"])
 #        dlg.setDirectory(self.currentdir)
 #        filenames = QStringList()
         if dlg.exec_():
@@ -944,8 +1039,10 @@ class MyWindow(QtGui.QMainWindow):
         self.skiplines = int(self.edtSkipLines.text())
         self.i0col = int(self.edtI0Col.text())
         self.i1col = int(self.edtICol.text())
+        self.i2col = int(self.edtI2Col.text())
         self.energycol = int(self.edtEnergyCol.text())
         self.exafscol = int(self.edtExafsCol.text())
+        self.refcol = int(self.edtRefCol.text())
         self.fluocol = fromstring(self.edtFluoCols.text(), dtype=int, sep=' ')
         
         self.exafs_fluo = int(not self.chkTransOrFluo.isChecked())
@@ -989,7 +1086,7 @@ class MyWindow(QtGui.QMainWindow):
                 pass
             
             self.lstSpectra.addItem(fn1[i])
-    ############### XES   ###################################################################################
+    ############### XES   #########################################
             if self.chkDataTypeXes.isChecked(): #XES data
                 self.dataClasses.append(xaesa_xes_class())
                 self.dataClasses[-1].name = fn1[i]
@@ -1011,14 +1108,25 @@ class MyWindow(QtGui.QMainWindow):
                 self.dataClasses[-1].eAreaNormMax = self.dataClasses[-1].energy[len(self.dataClasses[-1].energy)-1]
                 
                 #process opened file
-                self.dataClasses[-1].removeBackground()
+                self.dataClasses[-1].removeBackground(polPower=polPowerXES)
                 self.dataClasses[-1].areaNormalize()
+                
+                #try to get incident energy from filename
+                try:
+                    udsc_pos = len(self.fn[i]) - [pos for pos, char in enumerate(self.fn[i]) if char == '_'][-1]-1
+                    print(udsc_pos)
+                    E = self.fn[i][-udsc_pos:-4]
+                    self.dataClasses[-1].incidentEnergy = float(E)
+                except:
+                    self.dataClasses[-1].incidentEnergy = 0
+                    
+                print(E)
                 
                 sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
                 sel_item.setForeground(QtCore.Qt.darkMagenta)
             
             
-    ############### EXAFS   ###################################################################################
+    ############### EXAFS   ###############################################
             if self.chkDataTypeExafs.isChecked(): #only exafs
                 self.dataClasses.append(xaesa_exafs_class(3))
                 self.dataClasses[-1].name = fn1[i]
@@ -1031,8 +1139,8 @@ class MyWindow(QtGui.QMainWindow):
                 except:
                     self.openaddexception_cleaner(self.fn[i])
                     return
-                
-                    
+
+                self.dataClasses[-1].Es = 0
                 self.dataClasses[-1].E0 = 0
                 self.dataClasses[-1].E1 = 0
                 self.dataClasses[-1].E2 = 0
@@ -1059,6 +1167,16 @@ class MyWindow(QtGui.QMainWindow):
                                                         skip_header = self.skiplines, 
                                                         usecols=(self.energycol, self.i0col, self.i1col), 
                                                         unpack=True)
+
+                            if self.i2col != -1:
+                                self.dataClasses[-1].i2 = genfromtxt(str(self.fn[i]),
+                                                                     comments="#",
+                                                                     skip_header=self.skiplines,
+                                                                     usecols=(self.i2col),
+                                                                     unpack=True)
+
+                            if self.dataClasses[-1].energy[0] < 100: #if energy is in keV
+                                self.dataClasses[-1].energy *= 1000
                         except:
                             print("error opening file")
 
@@ -1086,7 +1204,9 @@ class MyWindow(QtGui.QMainWindow):
                         if self.dataClasses[-1].ifluo.ndim == 1:
                             self.dataClasses[-1].ifluo = asarray([self.dataClasses[-1].ifluo])
                             
-                        print(self.dataClasses[-1].ifluo)
+                        if self.dataClasses[-1].energy[0] < 100: #if energy is in keV
+                            self.dataClasses[-1].energy *= 1000
+                        
                         try:    
                             self.dataClasses[-1].processExpData()
                         except:
@@ -1109,8 +1229,20 @@ class MyWindow(QtGui.QMainWindow):
                                                                 skip_header = self.skiplines, 
                                                                 usecols=(self.energycol, self.exafscol), 
                                                                 unpack=True)
+
+                        if self.refcol != -1:
+                            self.dataClasses[-1].mjuRef = genfromtxt(str(self.fn[i]), comments="#",
+                                                                  skip_header=self.skiplines,
+                                                                  usecols=(self.refcol),
+                                                                  unpack=True)
+
+                        if self.dataClasses[-1].energy[0] < 100: #if energy is in keV
+                            self.dataClasses[-1].energy *= 1000
+#                        print(self.dataClasses[-1].energy)
+#                        print(self.dataClasses[-1].mju)
+                        
                     except:
-                        print("error opening mju")
+                        print("error opening mu")
                         pass
                     try:   
                         self.dataClasses[-1].processExpData()
@@ -1235,7 +1367,7 @@ class MyWindow(QtGui.QMainWindow):
     
             for i in range(len(list(selected_items))):
                 y= selected_indexes[i].row()
-                filename = directory +"/" + str(selected_items[i].text()) + ".mju"
+                filename = directory +"/" + str(selected_items[i].text()) + ".mu"
                 save_array = []
                 save_array.append(self.dataClasses[y].energy)
                 save_array.append(self.dataClasses[y].mju)
@@ -1377,19 +1509,19 @@ class MyWindow(QtGui.QMainWindow):
             #find the longest array
             for i in range(len(list(selected_indexes))):
                 y= selected_indexes[i].row()
-                if l<len(self.dataClasses[y].rsm):
-                    l = len(self.dataClasses[y].rsm)
+                if l<len(self.dataClasses[y].rZLC):
+                    l = len(self.dataClasses[y].rZLC)
             
             save_array = []
             for i in range(len(list(selected_indexes))):
                 y= selected_indexes[i].row()
-                if l>len(self.dataClasses[y].rsm):
-                    add_array = zeros(l-len(self.dataClasses[y].rsm))
+                if l>len(self.dataClasses[y].rZLC):
+                    add_array = zeros(l-len(self.dataClasses[y].rZLC))
                 else:
                     add_array = []
-                save_array.append(concatenate((self.dataClasses[y].rsm, add_array)))
-                save_array.append(concatenate((self.dataClasses[y].efrsm, add_array)))
-                save_array.append(concatenate((self.dataClasses[y].efism, add_array)))
+                save_array.append(concatenate((self.dataClasses[y].rZLC, add_array)))
+                save_array.append(concatenate((self.dataClasses[y].efrZLC, add_array)))
+                save_array.append(concatenate((self.dataClasses[y].efiZLC, add_array)))
 
             fn = self.savefiledialog_qtgui()
             if fn == "":
@@ -1410,9 +1542,9 @@ class MyWindow(QtGui.QMainWindow):
                 y= selected_indexes[i].row()
                 filename = directory +"/" + str(selected_items[i].text()) + ".ft"
                 save_array = []
-                save_array.append(self.dataClasses[y].rsm)
-                save_array.append(self.dataClasses[y].efrsm)
-                save_array.append(self.dataClasses[y].efism)
+                save_array.append(self.dataClasses[y].rZLC)
+                save_array.append(self.dataClasses[y].efrZLC)
+                save_array.append(self.dataClasses[y].efiZLC)
                 savetxt(filename, transpose(save_array))
 
     def savebft(self):
@@ -1444,7 +1576,7 @@ class MyWindow(QtGui.QMainWindow):
                 else:
                     add_array = []
                 save_array.append(concatenate((self.dataClasses[y].bftk, add_array)))
-                save_array.append(concatenate((self.dataClasses[y].bftexafs, add_array)))
+                save_array.append(concatenate((self.dataClasses[y].bftEXAFS, add_array)))
 
             fn = self.savefiledialog_qtgui()
             if fn == "":
@@ -1466,7 +1598,7 @@ class MyWindow(QtGui.QMainWindow):
                 filename = directory +"/" + str(selected_items[i].text()) + ".bft"
                 save_array = []
                 save_array.append(self.dataClasses[y].bftk)
-                save_array.append(self.dataClasses[y].bftexafs)
+                save_array.append(self.dataClasses[y].bftEXAFS)
                 savetxt(filename, transpose(save_array))
                 
     def saveXes(self):
@@ -1590,7 +1722,7 @@ class MyWindow(QtGui.QMainWindow):
             return 
             
         savetxt(d + "/" + self.lstSpectra.item(cnr).text() + ".amp", 
-                transpose([self.dataClasses[cnr].bftk, self.dataClasses[cnr].bftAmp / self.dataClasses[cnr].bftk**self.dataClasses[cnr].kPower ])) 
+                transpose([self.dataClasses[cnr].bftk, self.dataClasses[cnr].bftAmp*self.dataClasses[cnr].bftk / self.dataClasses[cnr].bftk**self.dataClasses[cnr].kPower ])) 
         
         savetxt(d + "/" + self.lstSpectra.item(cnr).text() + ".pha", 
                 transpose([self.dataClasses[cnr].bftk, self.dataClasses[cnr].bftPha ]))
@@ -1605,12 +1737,68 @@ class MyWindow(QtGui.QMainWindow):
         
         self.lblCurrentFile.setText(self.dataClasses[cnr].name)
         
+        if isinstance(self.dataClasses[cnr], xaesa_transient_class):
+            
+            #setup interface
+            self.frameXasFig.hide()
+            self.frameXesFig.show()
+            
+            self.frameTransParams.show()
+            self.frameXesParams.hide()
+            self.frameLParams.hide()
+            self.frameLFTParams.hide()
+            self.frameLBFTParams.hide()
+            
+            self.edtEMinSmoothTrans.setText("{:.2f}".format(self.dataClasses[cnr].eSmoothMin))
+            self.edtEMaxSmoothTrans.setText("{:.2f}".format(self.dataClasses[cnr].eSmoothMax))
+            self.edtSmoothFactor.setText("{:.8f}".format(self.dataClasses[cnr].smoothFactor))
+            
+            self.lineXesOriginal.set_xdata(self.dataClasses[cnr].energy)
+            self.lineXesOriginal.set_ydata(self.dataClasses[cnr].transient)
+            self.lineE0xes.set_xdata(self.dataClasses[cnr].energy[0])
+            self.lineE1xes.set_xdata(self.dataClasses[cnr].energy[0])
+            self.lineE2xes.set_xdata(self.dataClasses[cnr].energy[0])
+            self.lineE3xes.set_xdata(self.dataClasses[cnr].energy[0])
+            self.lineEminAnorm.set_xdata(self.dataClasses[cnr].eSmoothMin)
+            self.lineEmaxAnorm.set_xdata(self.dataClasses[cnr].eSmoothMax)
+            
+            self.lineXesBkgrCorr.set_xdata(self.dataClasses[cnr].energySmooth)
+            self.lineXesBkgrCorr.set_ydata(self.dataClasses[cnr].transientSmooth)
+            
+            self.lineXesNorm.set_xdata(self.dataClasses[cnr].energy)
+            self.lineXesNorm.set_ydata(self.dataClasses[cnr].transient)
+            
+            self.ax_xes.relim()
+            self.ax_xes_bc.relim()
+            self.ax_xes_norm.relim()
+            
+            self.ax_xes.autoscale()
+            self.ax_xes_bc.autoscale()
+            self.ax_xes_norm.autoscale()
+            
+            self.figXes.tight_layout()
+            self.canvXes.draw() 
+            
+            #Show integral values
+            where3 = where( logical_and(self.dataClasses[cnr].energy > self.dataClasses[cnr].eSmoothMin, \
+                                        self.dataClasses[cnr].energy < self.dataClasses[cnr].eSmoothMax) )
+            self.edtInt1Show.setText( \
+                                     str( simps(absolute(self.dataClasses[cnr].transient[where3]))))
+            self.edtInt2Show.setText( \
+                                     str( simps(absolute(self.dataClasses[cnr].transientSmooth))))
+        
+            self.edtErrorShow.setText( \
+                str(simps(absolute(self.dataClasses[cnr].transient[where3] - self.dataClasses[cnr].transientSmooth))))
+
+            
+        
         if isinstance(self.dataClasses[cnr], xaesa_xes_class):
             #setup interface
             self.frameXasFig.hide()
             self.frameXesFig.show()
             
             self.frameXesParams.show()
+            self.frameTransParams.hide()
             self.frameLParams.hide()
             self.frameLFTParams.hide()
             self.frameLBFTParams.hide()
@@ -1628,10 +1816,13 @@ class MyWindow(QtGui.QMainWindow):
             
             self.edtXesEANormMin.setText("{:.2f}".format(self.dataClasses[cnr].eAreaNormMin))
             self.edtXesEANormMax.setText("{:.2f}".format(self.dataClasses[cnr].eAreaNormMax))
+
             
             #update graph data
             self.lineXesOriginal.set_xdata(self.dataClasses[cnr].energy)
             self.lineXesOriginal.set_ydata(self.dataClasses[cnr].xes)
+            self.lineXesBkgr.set_xdata(self.dataClasses[cnr].energy)
+            self.lineXesBkgr.set_ydata(self.dataClasses[cnr].xesBackground)
             self.lineE0xes.set_xdata(self.dataClasses[cnr].E0)
             self.lineE1xes.set_xdata(self.dataClasses[cnr].E1)
             self.lineE2xes.set_xdata(self.dataClasses[cnr].E2)
@@ -1665,16 +1856,19 @@ class MyWindow(QtGui.QMainWindow):
             self.frameLParams.show()
             self.frameLFTParams.show()
             self.frameLBFTParams.show()
+            self.frameTransParams.hide()
             
             self.btnCompareXas.setMenu(self.mnuCompareXAS)
             self.btnSaveXas.setMenu(self.mnuSaveXAS)
             self.btnAverage.setMenu(self.mnuAverageXAS)
             self.btnRebin.setMenu(self.mnuRebinXAS)
-            
+
+            self.edtEs.setText("{:.2f}".format(self.dataClasses[cnr].Es))
             self.edtE0.setText("{:.2f}".format(self.dataClasses[cnr].E0))
             self.edtE1.setText("{:.2f}".format(self.dataClasses[cnr].E1))
             self.edtE2.setText("{:.2f}".format(self.dataClasses[cnr].E2))
             self.edtE3.setText("{:.2f}".format(self.dataClasses[cnr].E3))
+            self.edtEnergyShift.setText("{:.2f}".format(self.dataClasses[cnr].energyShift))
             self.edtkpow.setText(str(self.dataClasses[cnr].kPower))
             self.edtsm.setText(str(self.dataClasses[cnr].zeroLineCorr))
             self.edtmju0poldegree.setText("{:.0f}".format(self.dataClasses[cnr].mju0PolinomialDegree))
@@ -1693,6 +1887,8 @@ class MyWindow(QtGui.QMainWindow):
             self.edtExafsNormEnergy.setText(str(self.dataClasses[cnr].normalizationEnergy))
             self.chkExafsNormalization.setChecked(self.dataClasses[cnr].normalizationMode)
             
+            self.chkReduceK.setChecked(self.dataClasses[cnr].reduceK)
+            
             self.abs_scatter.set_xdata(self.dataClasses[cnr].energy)
             self.abs_scatter.set_ydata(self.dataClasses[cnr].mju)
             self.mjub_line.set_xdata(self.dataClasses[cnr].energy)
@@ -1701,6 +1897,7 @@ class MyWindow(QtGui.QMainWindow):
             self.mju0_mjub_line.set_ydata(self.dataClasses[cnr].mju0+self.dataClasses[cnr].victoreen)
             self.deriv_line.set_xdata(self.dataClasses[cnr].energy)
             self.deriv_line.set_ydata(self.dataClasses[cnr].mjuDerivative)
+            self.lineEs.set_xdata(self.dataClasses[cnr].Es)
             self.lineE0.set_xdata(self.dataClasses[cnr].E0)
             self.lineE1.set_xdata(self.dataClasses[cnr].E1)
             self.lineE2.set_xdata(self.dataClasses[cnr].E2)
@@ -1808,6 +2005,7 @@ class MyWindow(QtGui.QMainWindow):
                 
                 #Mju datasets
                 grp.create_dataset("mju", data = self.dataClasses[i].mju)
+                grp.create_dataset("mjuRef", data=self.dataClasses[i].mjuRef)
                 grp.create_dataset("mjuRebined", data = self.dataClasses[i].mjuRebined)
                 grp.create_dataset("mjuOriginal", data = self.dataClasses[i].mjuOriginal)
                 grp.create_dataset("mjuDerivative", data = self.dataClasses[i].mjuDerivative)
@@ -1855,10 +2053,13 @@ class MyWindow(QtGui.QMainWindow):
                 
                 
                 #extraction params
+                grp.create_dataset("Es", data=self.dataClasses[i].Es)
                 grp.create_dataset("E0", data = self.dataClasses[i].E0 )
                 grp.create_dataset("E1", data = self.dataClasses[i].E1 )
                 grp.create_dataset("E2", data = self.dataClasses[i].E2 )
                 grp.create_dataset("E3", data = self.dataClasses[i].E3 )
+
+                grp.create_dataset("energyShift", data=self.dataClasses[i].energyShift)
                 
                 grp.create_dataset("kPower", data = self.dataClasses[i].kPower)
                 
@@ -1951,7 +2152,23 @@ class MyWindow(QtGui.QMainWindow):
                 grp.create_dataset("E3", data = self.dataClasses[i].E3)
                 
                 grp.create_dataset("eAreaNormMin", data = self.dataClasses[i].eAreaNormMin)
-                grp.create_dataset("eAreaNormMax", data = self.dataClasses[i].eAreaNormMax)                
+                grp.create_dataset("eAreaNormMax", data = self.dataClasses[i].eAreaNormMax) 
+                
+                grp.create_dataset("incidentEnergy", data = self.dataClasses[i].incidentEnergy) 
+                
+            if isinstance(self.dataClasses[i], xaesa_transient_class): #save XES data                
+            
+                grp = fhdf5.create_group("{0:06d}".format(i) + "&" + self.lstSpectra.item(i).text())
+                grp.create_dataset("classType", data = 20)
+                grp.create_dataset("name", data = self.dataClasses[i].name)
+                grp.create_dataset("energy", data = self.dataClasses[i].energy)
+                grp.create_dataset("transient", data = self.dataClasses[i].transient)
+                grp.create_dataset("energySmooth", data = self.dataClasses[i].energySmooth)
+                grp.create_dataset("transientSmooth", data = self.dataClasses[i].transientSmooth)
+                
+                grp.create_dataset("eSmoothMin", data = self.dataClasses[i].eSmoothMin)
+                grp.create_dataset("eSmoothMax", data = self.dataClasses[i].eSmoothMax) 
+                grp.create_dataset("smoothFactor", data = self.dataClasses[i].smoothFactor)
 
         fhdf5.close()
 
@@ -2020,7 +2237,11 @@ class MyWindow(QtGui.QMainWindow):
                 self.dataClasses[-1].mjuDerivative= grp.get("mjuDerivative").value
                 self.dataClasses[-1].victoreen = grp.get("victoreen").value
                 self.dataClasses[-1].mjuMinusVictoreen = grp.get("mjuMinusVictoreen").value
-                self.dataClasses[-1].mju0 = grp.get("mju0").value      
+                self.dataClasses[-1].mju0 = grp.get("mju0").value
+                try:
+                    self.dataClasses[-1].mjuRef = grp.get("mjuRef").value
+                except:
+                    pass
                 
                 #EXAFS datasets
                 self.dataClasses[-1].k = grp.get("k").value
@@ -2066,6 +2287,15 @@ class MyWindow(QtGui.QMainWindow):
                 self.dataClasses[-1].E1 = grp.get("E1").value
                 self.dataClasses[-1].E2 = grp.get("E2").value
                 self.dataClasses[-1].E3 = grp.get("E3").value
+                try:
+                    self.dataClasses[-1].Es = grp.get("Es").value
+                except:
+                    self.dataClasses[-1].Es = 0
+
+                try:
+                    self.dataClasses[-1].energyShift = grp.get("energyShift").value
+                except:
+                    pass
                 
                 self.dataClasses[-1].kPower = grp.get("kPower").value
                 
@@ -2165,8 +2395,29 @@ class MyWindow(QtGui.QMainWindow):
                 self.dataClasses[-1].eAreaNormMin = grp.get("eAreaNormMin").value
                 self.dataClasses[-1].eAreaNormMax = grp.get("eAreaNormMax").value
                 
+                try:
+                    self.dataClasses[-1].incidentEnergy = grp.get("incidentEnergy").value
+                except:
+                    self.dataClasses[-1].incidentEnergy = 0
+                    
                 sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
                 sel_item.setForeground(QtCore.Qt.darkMagenta)
+                
+        ##################### OPEN TRANSIENT        
+            if classType == 20: #TRANSIENT
+                self.dataClasses.append(xaesa_transient_class())
+                self.dataClasses[-1].name = grp.get("name").value
+                self.dataClasses[-1].energy = grp.get("energy").value
+                self.dataClasses[-1].energySmooth = grp.get("energySmooth").value
+                self.dataClasses[-1].transient = grp.get("transient").value
+                self.dataClasses[-1].transientSmooth = grp.get("transientSmooth").value
+                
+                self.dataClasses[-1].eSmoothMin = grp.get("eSmoothMin").value
+                self.dataClasses[-1].eSmoothMax = grp.get("eSmoothMax").value
+                self.dataClasses[-1].smoothFactor = grp.get("smoothFactor").value
+                
+                sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
+                sel_item.setForeground(QtCore.Qt.black)
   
    
         f.close()
@@ -2231,7 +2482,7 @@ class MyWindow(QtGui.QMainWindow):
                 self.dataClasses[y].eAreaNormMin = self.copiedparamsXES[4]
                 self.dataClasses[y].eAreaNormMax = self.copiedparamsXES[5]
                 
-                self.dataClasses[y].removeBackground()
+                self.dataClasses[y].removeBackground(polPower=polPowerXES)
                 self.dataClasses[y].areaNormalize()
                 
                 print("XES params applied")
@@ -2295,6 +2546,7 @@ class MyWindow(QtGui.QMainWindow):
         
         cnr = self.current
         fw = FitWindow()
+        fw.setWindowTitle("FIT "+self.lstSpectra.currentItem().text())
         
         if self.dataClasses[cnr].isFitted == 1:
             fw.fit_result = copy(self.dataClasses[cnr].fitExafs)
@@ -2332,6 +2584,7 @@ class MyWindow(QtGui.QMainWindow):
         
         cnr = self.current
         self.rdfw = RdfWindow()
+        self.rdfw.setWindowTitle("RDF "+self.lstSpectra.currentItem().text())
         
         if self.dataClasses[cnr].isRdfed == 1 :
             self.rdfw.rdf = copy(self.dataClasses[cnr].rdf)
@@ -2393,7 +2646,7 @@ class MyWindow(QtGui.QMainWindow):
         if len(selected_indexes) == 0:
             return
         
-        if  dataType == 'i0' or dataType == 'i1' or dataType == 'i2' or dataType == 'ifluo':
+        if  dataType == 'i0' or dataType == 'i1' or dataType == 'i2' or dataType == 'ifluo' or dataType=='muref':
             viewerDialog.viewer.x_caption = 'Energy, eV'
             viewerDialog.viewer.y_caption = 'Intensity'
             
@@ -2405,7 +2658,7 @@ class MyWindow(QtGui.QMainWindow):
             
             y= selected_indexes[i].row()
             
-            if dataType == 'i0' or dataType == 'i1' or dataType == 'i2':
+            if dataType == 'i0' or dataType == 'i1' or dataType == 'i2' or dataType=='muref':
                 if self.dataClasses[y].energyOriginal != []:
                     energy = self.dataClasses[y].energyOriginal
                 else:
@@ -2414,6 +2667,7 @@ class MyWindow(QtGui.QMainWindow):
                 if dataType == 'i0': viewerDialog.viewer.y_data.append(self.dataClasses[y].i0)
                 if dataType == 'i1': viewerDialog.viewer.y_data.append(self.dataClasses[y].i1)
                 if dataType == 'i2': viewerDialog.viewer.y_data.append(self.dataClasses[y].i2)
+                if dataType == 'muref': viewerDialog.viewer.y_data.append(self.dataClasses[y].mjuRef)
                 viewerDialog.viewer.labels.append(str(selected_items[i].text()))
 
                 
@@ -2664,9 +2918,59 @@ class MyWindow(QtGui.QMainWindow):
         self.dataClasses[-1].mju =  average
         
         self.dataClasses[-1].E0 =  self.dataClasses[selectedRows[0]].E0
-        self.dataClasses[-1].E1 =  self.dataClasses[selectedRows[0]].E0
-        self.dataClasses[-1].E2 =  self.dataClasses[selectedRows[0]].E0
-        self.dataClasses[-1].E3 =  self.dataClasses[selectedRows[0]].E0
+        self.dataClasses[-1].E1 =  self.dataClasses[selectedRows[0]].E1
+        self.dataClasses[-1].E2 =  self.dataClasses[selectedRows[0]].E2
+        self.dataClasses[-1].E3 =  self.dataClasses[selectedRows[0]].E3
+        self.dataClasses[-1].zeroLineCorr =  self.dataClasses[selectedRows[0]].zeroLineCorr
+        
+        self.dataClasses[-1].kMin =  self.dataClasses[selectedRows[0]].kMin
+        self.dataClasses[-1].kMax =  self.dataClasses[selectedRows[0]].kMax
+        self.dataClasses[-1].dk =  self.dataClasses[selectedRows[0]].dk
+        self.dataClasses[-1].rMin =  self.dataClasses[selectedRows[0]].rMin
+        self.dataClasses[-1].rMax =  self.dataClasses[selectedRows[0]].rMax
+        self.dataClasses[-1].dr =  self.dataClasses[selectedRows[0]].dr
+        
+        self.dataClasses[-1].kPower =  self.dataClasses[selectedRows[0]].kPower
+        
+        self.dataClasses[-1].rMinBft =  self.dataClasses[selectedRows[0]].rMinBft
+        self.dataClasses[-1].rMaxBft =  self.dataClasses[selectedRows[0]].rMaxBft
+        self.dataClasses[-1].bftWindowParam =  self.dataClasses[selectedRows[0]].bftWindowParam
+        
+        self.dataClasses[-1].processExpData()
+
+        
+    def mergeMju(self): 
+
+        selected_indexes = self.lstSpectra.selectedIndexes()
+        
+        if len(selected_indexes) == 0:
+            return
+        
+        selectedRows = [x.row() for x in selected_indexes]
+        
+        energy_merge = array(self.dataClasses[selectedRows[0]].energy)
+        merge = array(self.dataClasses[selectedRows[0]].mju)
+        name = "mu_merge " + str(selectedRows[0])
+        for i in selectedRows[1:]:
+            name = name + " + " + str(i)
+            energy_merge = concatenate( (energy_merge, self.dataClasses[i].energy) )
+            merge = concatenate( (merge, self.dataClasses[i].mju) )
+            
+        sort = energy_merge.argsort()
+        energy_merge = energy_merge[sort]
+        merge = merge[sort]    
+        
+        self.lstSpectra.addItem(name)
+        
+        self.dataClasses.append(xaesa_exafs_class(2)) # mju
+        
+        self.dataClasses[-1].energy =  energy_merge
+        self.dataClasses[-1].mju =  merge
+        
+        self.dataClasses[-1].E0 =  self.dataClasses[selectedRows[0]].E0
+        self.dataClasses[-1].E1 =  self.dataClasses[selectedRows[0]].E1
+        self.dataClasses[-1].E2 =  self.dataClasses[selectedRows[0]].E2
+        self.dataClasses[-1].E3 =  self.dataClasses[selectedRows[0]].E3
         self.dataClasses[-1].zeroLineCorr =  self.dataClasses[selectedRows[0]].zeroLineCorr
         
         self.dataClasses[-1].kMin =  self.dataClasses[selectedRows[0]].kMin
@@ -2729,7 +3033,7 @@ class MyWindow(QtGui.QMainWindow):
         self.dataClasses[-1].eAreaNormMax = self.dataClasses[selectedRows[0]].eAreaNormMax
         
         #process opened file
-        self.dataClasses[-1].removeBackground()
+        self.dataClasses[-1].removeBackground(polPower=polPowerXES)
         self.dataClasses[-1].areaNormalize()
         
         sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
@@ -2748,7 +3052,8 @@ class MyWindow(QtGui.QMainWindow):
         startTime = timer()
         
         cnr = self.current
-        
+
+        self.dataClasses[cnr].Es = float(self.edtEs.text())
         self.dataClasses[cnr].E0 = float(self.edtE0.text())
         self.dataClasses[cnr].E1 = float(self.edtE1.text())
         self.dataClasses[cnr].E2 = float(self.edtE2.text())
@@ -2758,6 +3063,8 @@ class MyWindow(QtGui.QMainWindow):
         
         self.dataClasses[cnr].normalizationMode = int(self.chkExafsNormalization.isChecked())
         self.dataClasses[cnr].normalizationEnergy = float(self.edtExafsNormEnergy.text())
+        
+        self.dataClasses[cnr].reduceK = int(self.chkReduceK.isChecked())
 
         self.dataClasses[cnr].kMin = float(self.edtkmin.text())
         self.dataClasses[cnr].kMax = float(self.edtkmax.text())
@@ -3024,7 +3331,7 @@ Remove decreasing data points automaticly ?")
             self.dataClasses[-1].eAreaNormMax = self.dataClasses[row].eAreaNormMax
             
             #process opened file
-            self.dataClasses[-1].removeBackground()
+            self.dataClasses[-1].removeBackground(polPower=polPowerXES)
             self.dataClasses[-1].areaNormalize()
             
             sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
@@ -3064,8 +3371,8 @@ Remove decreasing data points automaticly ?")
                                                "Energy shift",
                                                "Enter energy shift",
                                                value = 10, 
-                                               max = 10000,
-                                               min = -10000,
+                                               max = 30000,
+                                               min = -30000,
                                                decimals = 2)
 		
         if ok:
@@ -3073,7 +3380,8 @@ Remove decreasing data points automaticly ?")
         else:
             return
         
-        self.energy[cnr] = self.energy[cnr] + shift
+        self.dataClasses[cnr].energy = self.dataClasses[cnr].energy + shift
+        self.dataClasses[cnr].energyShift = self.dataClasses[cnr].energyShift +shift
         self.lstSpectraItemClicked()
         
     def LinCombination(self):
@@ -3094,6 +3402,24 @@ Remove decreasing data points automaticly ?")
         lcw.initUI()      
         
         lcw.exec_()
+        
+    def pcaAnalysis(self):
+
+        pcaw = PCAWindow()
+        pcaw.mainform = self
+        
+        msgBox = QtGui.QMessageBox()
+        msgBox.setText('Choose mju or EXAFS?')
+        msgBox.addButton(QtGui.QPushButton('Mju'), QtGui.QMessageBox.AcceptRole)
+        msgBox.addButton(QtGui.QPushButton('EXAFS'), QtGui.QMessageBox.AcceptRole)
+        msgBox.addButton(QtGui.QPushButton('XANES'), QtGui.QMessageBox.AcceptRole)
+        msgBox.addButton(QtGui.QPushButton('XES'), QtGui.QMessageBox.AcceptRole)
+        
+        pcaw.mju_exafs = msgBox.exec_()
+        
+        pcaw.initUI()      
+        
+        pcaw.exec_()
         
     def openNexus(self):
         self.fn = self.openaddfiledialog_qtgui()
@@ -3166,46 +3492,45 @@ Remove decreasing data points automaticly ?")
                 self.print_hdf5_item_structure(subg, offset + '    ')
                 
     def spectradifference(self):
-        if self.current < 0:
-            return
-
         selected_indexes = self.lstSpectra.selectedIndexes()
-
-        y1= selected_indexes[0].row()
-        y2= selected_indexes[1].row()
-
         
-        self.lstSpectra.addItem("difference"+str(y1) + "-" + str(y2))
+        if len(selected_indexes) == 0:
+            return
         
-        self.fill_arrays()
+        selectedRows = [x.row() for x in selected_indexes]
         
-        self.energy[-1] = []
-        self.mju[-1] = []
+        #check if all datasets with the same length
+        
+        elementsCount = asarray([len(self.dataClasses[x].xes) for x in selectedRows])
+        if sum( elementsCount - elementsCount[0] ) != 0: #not all arrays are the same length
+            msgBox = QtGui.QMessageBox()
+            msgBox.setText("Not all arrays are the same length. Can't average.")
+#            msgBox.setInformativeText("Do you want to save your changes?")
+            msgBox.setStandardButtons(QtGui.QMessageBox.Yes)
+            msgBox.exec_()
+            return
+        
+        difference = self.dataClasses[selectedRows[1]].xesAreaNorm - self.dataClasses[selectedRows[0]].xesAreaNorm
+        
+        name = self.lstSpectra.item(selectedRows[1]).text() + ' - ' + self.lstSpectra.item(selectedRows[0]).text()
+        
+        
+        self.lstSpectra.addItem(name)
+            
+        self.dataClasses.append(xaesa_transient_class())
+        self.dataClasses[-1].name = name
+        
+        self.dataClasses[-1].energy = self.dataClasses[selectedRows[0]].energy
+        self.dataClasses[-1].transient = difference
+        
+        self.dataClasses[-1].eSmoothMin = self.dataClasses[selectedRows[0]].eAreaNormMin
+        self.dataClasses[-1].eSmoothMax = self.dataClasses[selectedRows[0]].eAreaNormMax
+        
+        t1 = timer()
+        self.dataClasses[-1].smoothTransient(smFactor = self.dataClasses[-1].smoothFactor)
+        t2=timer()
+        print("transient time=", t2-t1)
 
-        self.k[-1] = self.k[y1]
-        self.exafs[-1] = self.exafs[y1] - self.exafs[y2]
-        self.exafssm[-1] = self.exafs[y1] - self.exafs[y2]
-        self.exafsd[-1] = self.exafs[y1] - self.exafs[y2]
-        
-        self.E0[-1] = self.E0[y1]
-        self.E1[-1] = self.E1[y1]
-        self.E2[-1] = self.E2[y1]
-        self.E3[-1] = self.E3[y1]
-        self.zlinecorr[-1] = self.zlinecorr[y1]
-
-        self.kmin[-1] = self.kmin[y1]
-        self.kmax[-1] = self.kmax[y1]
-        self.dk[-1] = self.dk[y1]
-        self.rmin[-1] = self.rmin[y1]
-        self.rmax[-1] = self.rmax[y1]
-        self.dr[-1] = self.dr[y1]
-        
-        self.kpow[-1] = self.kpow[y1]
-
-        self.rminbft[-1] = self.rminbft[y1]
-        self.rmaxbft[-1] = self.rmaxbft[y1]
-        self.bftwindowparam[-1] = self.bftwindowparam[y1]
-        self.mjuorexafs[-1] = 1
         
     def xesExtractRedo(self):
         
@@ -3222,8 +3547,24 @@ Remove decreasing data points automaticly ?")
         self.dataClasses[cnr].eAreaNormMin = float(self.edtXesEANormMin.text())
         self.dataClasses[cnr].eAreaNormMax = float(self.edtXesEANormMax.text())
         
-        self.dataClasses[cnr].removeBackground()
+        self.dataClasses[cnr].removeBackground(polPower=polPowerXES)
         self.dataClasses[cnr].areaNormalize()
+        
+        self.lstSpectraItemClicked()
+        
+    def transChange(self):
+        
+        cnr = self.current
+
+        self.current =  self.lstSpectra.currentRow()
+        cnr = self.current 
+        
+        self.dataClasses[cnr].eSmoothMin = float(self.edtEMinSmoothTrans.text())
+        self.dataClasses[cnr].eSmoothMax = float(self.edtEMaxSmoothTrans.text())
+        
+        self.dataClasses[cnr].smoothFactor = float(self.edtSmoothFactor.text())        
+        
+        self.dataClasses[cnr].smoothTransient(smFactor = self.dataClasses[cnr].smoothFactor)
         
         self.lstSpectraItemClicked()
         
@@ -3247,8 +3588,7 @@ Remove decreasing data points automaticly ?")
             self.dragStartSelectedRows = [x.row() for x in self.lstSpectra.selectedIndexes()]
 
         return False # don't actually interrupt anything
-    
-    
+
     def onpick(self, event):
         # on the pick event, find the orig line corresponding to the
         # legend proxy line, and toggle the visibility
@@ -3270,24 +3610,89 @@ Remove decreasing data points automaticly ?")
             else:
                 legline.set_alpha(0.2)
         self.fig.canvas.draw()
+
+    def shiftEnergyRef(self):
+
+        selected_indexes = self.lstSpectra.selectedIndexes()
+        if len(list(selected_indexes))<2:
+            return
+
+        ref = selected_indexes[-1].row()
+        maxderiv_ref = argmax( gradient(self.dataClasses[ref].mjuRef))
+        print(ref, maxderiv_ref)
+
+        for i in range(len(list(selected_indexes))-1):
+            y = selected_indexes[i].row()
+
+            maxderiv_data = argmax( gradient(self.dataClasses[y].mjuRef))
+
+            e_shift = self.dataClasses[ref].energy[maxderiv_ref] - self.dataClasses[y].energy[maxderiv_data]
+            print(y, e_shift)
+
+            self.dataClasses[y].energy = self.dataClasses[y].energy + e_shift
+            self.dataClasses[y].energyShift = self.dataClasses[y].energyShift + e_shift
+
+    def makeRxesPlane(self, energyTransfer=False):
+        selected_indexes = self.lstSpectra.selectedIndexes()
+        
+        if len(selected_indexes) == 0:
+            return
+        
+        selectedRows = [x.row() for x in selected_indexes]
+        
+        
+        rxesDialog = xaesaRxesWindow()
+        
+        rxesDialog.viewer.rxes = []
+        rxesDialog.viewer.fluoEnergy = []
+        rxesDialog.viewer.incidentEnergy = []
+        
+        if energyTransfer:
+            for i in selectedRows:
+                rxesDialog.viewer.rxes.append(self.dataClasses[i].xes )   
+                rxesDialog.viewer.fluoEnergy.append(self.dataClasses[i].energy * (-1) + self.dataClasses[i].incidentEnergy)
+                rxesDialog.viewer.incidentEnergy.append(zeros(len(self.dataClasses[i].xes)) + self.dataClasses[i].incidentEnergy)
+                
+            rxesDialog.viewer.rxes = transpose(rxesDialog.viewer.rxes)
+            rxesDialog.viewer.fluoEnergy = transpose(rxesDialog.viewer.fluoEnergy)
+            rxesDialog.viewer.incidentEnergy = transpose(rxesDialog.viewer.incidentEnergy)
+            rxesDialog.viewer.energyTransfer = energyTransfer
+            
+        else:               
+            for i in selectedRows:
+                rxesDialog.viewer.rxes.append(self.dataClasses[i].xes )   
+                rxesDialog.viewer.fluoEnergy.append(self.dataClasses[i].energy)
+                rxesDialog.viewer.incidentEnergy.append(zeros(len(self.dataClasses[i].xes)) + self.dataClasses[i].incidentEnergy)
+                
+            rxesDialog.viewer.rxes = transpose(rxesDialog.viewer.rxes)
+            rxesDialog.viewer.fluoEnergy = transpose(rxesDialog.viewer.fluoEnergy)
+            rxesDialog.viewer.incidentEnergy = transpose(rxesDialog.viewer.incidentEnergy)
+            rxesDialog.viewer.energyTransfer = energyTransfer
+        
+        
+        rxesDialog.viewer.plot()        
+        
+        rxesDialog.exec_()
                 
                 
     def adaptOpeningParams(self):
-        print('Mju          ', self.chkDataTypeMju.isChecked())
+        print('mu           ', self.chkDataTypeMju.isChecked())
         print('Xes          ', self.chkDataTypeXes.isChecked())
         print('Exafs        ', self.chkDataTypeExafs.isChecked())
         print('Transient    ', self.chkDataTypeTrans.isChecked())
         
         if self.chkDataTypeMju.isChecked():
             self.lblDataX.setText("Energy")
-            self.lblDataY.setText("Mju")
+            self.lblDataY.setText("mu")
             self.gb2.show()
             if self.chkCalcMju.isChecked():
                 self.gb3.show()
                 self.lblI0Col.show()
                 self.lblI1Col.show()
+                self.lblI2Col.show()
                 self.edtI0Col.show()
                 self.edtICol.show()
+                self.edtI2Col.show()
                 if self.chkTransOrFluo.isChecked(): #transmission selected
                     self.lblI1Col.setText("I1 column")
                     self.edtFluoCols.hide()
@@ -3301,8 +3706,10 @@ Remove decreasing data points automaticly ?")
                 self.gb3.hide()
                 self.lblI0Col.hide()
                 self.lblI1Col.hide()
+                self.lblI2Col.hide()
                 self.edtI0Col.hide()
                 self.edtICol.hide()
+                self.edtI2Col.hide()
                 self.edtFluoCols.hide()
         
         if self.chkDataTypeXes.isChecked():
@@ -3361,4 +3768,5 @@ Remove decreasing data points automaticly ?")
 if __name__ == '__main__':
     app = QtGui.QApplication(argv)
     window = MyWindow()
+    print(getpid())
     exit(app.exec_())

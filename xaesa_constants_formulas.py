@@ -2,7 +2,7 @@
 """
 Created on Tue Feb 13 14:49:33 2018
 
-@author: akali
+@author: AKalinko
 """
 
 from numpy import asarray, exp, zeros

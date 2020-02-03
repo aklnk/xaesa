@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+#import pyautogui as pag
+
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 from scipy.optimize import minimize
@@ -128,7 +130,7 @@ class RdfWindow(QtGui.QDialog):
         self.textEdit.moveCursor(QtGui.QTextCursor.End)
         self.textEdit.insertPlainText(message)
 
-    def initUI(self):        
+    def initUI(self):  
         
         self.fig = plt.figure(5, figsize=(18, 6))
         self.ax_bft = plt.subplot2grid((1,3), (0,0))
@@ -253,6 +255,9 @@ class RdfWindow(QtGui.QDialog):
         self.btnOpenFeff = QtGui.QPushButton('Open feff file(s) ...')
         self.btnOpenFeff.clicked.connect(self.openfeff)
         
+        self.btnPrintWindow = QtGui.QPushButton('Print active window to clipboard')
+        self.btnPrintWindow.clicked.connect(self.printWindow)
+        
 #        self.textEdit = QtGui.QTextEdit(self)
         
         
@@ -302,6 +307,7 @@ class RdfWindow(QtGui.QDialog):
         lp.addWidget(self.btnOpenAmp, 4, 5)
         lp.addWidget(self.btnOpenPha, 5, 5)
         lp.addWidget(self.btnOpenFeff, 6, 0)
+#        lp.addWidget(self.btnPrintWindow, 6, 1, 1, 4)
         
         lfig.addLayout(lp, 2,1, 5, 1)
 
@@ -324,6 +330,9 @@ class RdfWindow(QtGui.QDialog):
         self.dr = float(self.edtdr.text())         
         
         self.rdf_r = np.arange(self.rstart, self.rend, self.dr)
+        if len(self.rdf_r) % 2 == 1: #add one more point fo have even number of points
+            self.rdf_r = np.append(self.rdf_r, [self.rdf_r[-1] + self.dr] )
+        print("number of R points:",  len(self.rdf_r) )
 
         if self.chkFirstFit.isChecked():
             self.rdf = np.zeros(len(self.rdf_r))
@@ -496,8 +505,8 @@ class RdfWindow(QtGui.QDialog):
         self.line1_rdf.set_xdata(self.rdf_r)
         self.line1_rdf.set_ydata(lsq_result.x)
         
-        self.line2_rdf.set_xdata(self.rdf_r)
-        self.line2_rdf.set_ydata(self.rdf)
+#        self.line2_rdf.set_xdata(self.rdf_r)
+#        self.line2_rdf.set_ydata(self.rdf)
         
         
         self.ax_bft.relim()
@@ -552,7 +561,7 @@ class RdfWindow(QtGui.QDialog):
     def bftft(self):
         self.window = Window_Gauss10(self.k, self.k[0], self.k[len(self.k)-1])
         self.bftw = self.bft * self.window
-        self.r, self.fr, self.fi = FT(self.k, self.bftw, 0, 4, 0.02)
+        self.r, self.fr, self.fi = FT(self.k, self.bftw, 0, 6, 0.02)
         self.efr = np.sqrt(self.fr*self.fr + self.fi*self.fi)
         self.efi = self.fi * (-1)
         
@@ -574,8 +583,8 @@ class RdfWindow(QtGui.QDialog):
         self.line1_rdf.set_xdata(self.rdf_r)
         self.line1_rdf.set_ydata(self.rdf)
         
-        print(len(self.rdf_exafs_k))
-        print(len(self.rdf_exafs))
+#        print(len(self.rdf_exafs_k))
+#        print(len(self.rdf_exafs))
         
         self.ax_bft.relim()
         self.ax_bft.autoscale()
@@ -592,7 +601,7 @@ class RdfWindow(QtGui.QDialog):
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
         dlg.setNameFilters(["All files (*.*)", "Amplitude files (*.amp)"])
-        dlg.setDirectory(os.getcwd())
+        # dlg.setDirectory(os.getcwd())
         if dlg.exec_():
             self.fnamp = dlg.selectedFiles()
         else:
@@ -609,7 +618,7 @@ class RdfWindow(QtGui.QDialog):
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
         dlg.setNameFilters(["All files (*.*)", "Amplitude files (*.pha)"])
-        dlg.setDirectory(os.getcwd())
+        # dlg.setDirectory(os.getcwd())
         if dlg.exec_():
             self.fnpha = dlg.selectedFiles()
         else:
@@ -624,7 +633,7 @@ class RdfWindow(QtGui.QDialog):
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
         dlg.setNameFilters(["All files (*.*)"])
-        dlg.setDirectory(os.getcwd())
+        # dlg.setDirectory(os.getcwd())
         if dlg.exec_():
             self.fnfeff = dlg.selectedFiles()
         else:
@@ -754,6 +763,10 @@ class RdfWindow(QtGui.QDialog):
             return flist[0]
         else:
             return ""
+        
+    def printWindow(self):
+#        pag.press('prtscr')
+        pass
         
 
         

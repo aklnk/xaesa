@@ -1,0 +1,9 @@
+2019-01-29
+Saving to single file removed, now save selected data to folder with 
+data name and adding extension
+
+2019-11-27
+Merge spectra functionality
+Option to read reference spectrum
+Energy shift
+Automatic energy scale shift according to the reference spectrum 

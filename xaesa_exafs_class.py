@@ -4,7 +4,8 @@ Created on Tue Feb 13 11:55:12 2018
 
 @author: akali
 """
-
+import sys
+import os
 from numpy import   arange, argmin, argmax, asarray, concatenate, copy, delete, \
                     gradient, log, logical_and, multiply, newaxis, pi, power, \
                     sin, cos, sqrt, sum, where, zeros, unique, ones, convolve, isnan
@@ -17,7 +18,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
-from .xaesa_constants_formulas import    victoreen, windowGauss10, \
+from .xaesa_constants_formulas import victoreen, windowGauss10, \
                                          me, hbar
                                          
 from .xaesa_ft import FT, BFT, GETPHASE, BFTWindow
@@ -46,7 +47,9 @@ class xaesa_exafs_class():
         self.mjuDerivative= []
         self.victoreen = []
         self.mjuMinusVictoreen = []
-        self.mju0 = []         
+        self.mju0 = []
+
+        self.mjuRef = []
         
         #EXAFS datasets
         self.k = []
@@ -89,10 +92,13 @@ class xaesa_exafs_class():
         
         
         #extraction params
+        self.Es = 0
         self.E0 = 0
         self.E1 = 0
         self.E2 = 0
         self.E3 = 0
+        
+        self.energyShift = 0
         
         self.kPower = 2
         
@@ -102,6 +108,10 @@ class xaesa_exafs_class():
         
         self.normalizationMode = 0 #0 for mju0 normalization, 1 for value normalization at given energy
         self.normalizationEnergy = 0
+        
+        self.reduceK = 0
+        
+        self.c = 0
         
         #FT params
         self.kMin = 0.5
@@ -165,6 +175,10 @@ class xaesa_exafs_class():
         
     def calculateMjuTransmission(self):
         self.mju = log(self.i0 / self.i1)
+        try:
+            self.mjuRef = log(self.i1 / self.i2)
+        except:
+            pass
 
     
     def calculateMjuFluorescence(self):
@@ -191,17 +205,23 @@ class xaesa_exafs_class():
         energyMaxDerivValue = self.energy[0:lastPoint][maxderiv]
         
         print("max deriv at ", energyMaxDerivValue)
-        
+
         self.E0 = self.energy[maxderiv] + 5.5
         self.E1 = self.energy[maxderiv] - (energyMaxDerivValue - self.energy[0])/5
         self.E2 = self.energy[maxderiv] + (self.energy[-1] - energyMaxDerivValue )/5
         self.E3 = self.energy[-1]
+        self.Es = self.E1-300
+        
+        self.kMax = sqrt(  (2*me/hbar**2) * (self.E3-self.E0) * 1.602*10**-19  ) *10**-10 - 0.5
         
     def removeBackground(self):
-        
-        energyStart = self.energy[0]
-        if energyStart < self.E1-300: #needed if there is another edge before
-            energyStart = self.E1-300
+
+        if self.Es == 0:
+            energyStart = self.energy[0]
+        else:
+            energyStart = self.Es
+        # if energyStart < self.E1-300: #needed if there is another edge before
+        #     energyStart = self.E1-300
           
         whereE1 = where( logical_and(self.energy > energyStart, self.energy < self.E1) )
     
@@ -250,10 +270,26 @@ class xaesa_exafs_class():
     
         self.exafs = (mjuE0E3 - mju0E0E3)/mju0E0E3_1 * power(self.k, self.kPower)
         
+        ### test auto reduce points
+        if self.reduceK :
+            sys.path.append(os.path.join('.', 'lib'))
+            import xaslib as xl
+            self.k, self.exafs = xl.kPointsReduction(self.k, self.exafs)
+        
     def calculateEXAFSZLC(self):
         if self.zeroLineCorr == 0:
             self.exafsZeroLine = zeros( len(self.k))
-        if self.zeroLineCorr > 0:            
+        if self.zeroLineCorr > 0:  
+            ### test code
+#            sys.path.append(os.path.join('.', 'lib'))
+#            import xaslib as xl
+#            nk, ne = xl.kPointsReduction(self.k, self.exafs)
+#            spl = Rbf( nk, ne, 
+#                       function = 'multiquadric', 
+#                       epsilon = 3, #epsilon 3 woks fine
+#                       smooth = self.zeroLineCorr )
+            ### end test code
+            
             spl = Rbf( self.k, self.exafs, 
                        function = 'multiquadric', 
                        epsilon = 3, #epsilon 3 woks fine
@@ -261,7 +297,7 @@ class xaesa_exafs_class():
             
             
             self.exafsZeroLine = spl(self.k)
-
+        
         self.exafsZLC = self.exafs - self.exafsZeroLine
         
         
@@ -417,7 +453,7 @@ class xaesa_exafs_class():
 #        eScale = kScale**2 * 10**20 / (1.602*10**-19 * (2*me/hbar**2)) + self.E0
         kCenter = kScale[0] + dk / 2
         while kCenter + dk/2 < kScale[-1]:
-            reg = where( logical_and(kScale > kCenter-dE/2, kScale < kCenter+dE/2) )
+            reg = where( logical_and(kScale > kCenter-dk/2, kScale < kCenter+dk/2) )
 #            print("reg", len(reg), reg)
 #            if reg==[]:
 #                eCenter = eCenter + dE

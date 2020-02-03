@@ -149,17 +149,17 @@ class FitWindow(QtGui.QDialog):
         lblC6 = QtGui.QLabel("C6")
 #        lblE0 = QtGui.QLabel("E0")
         
-        lblAmp = QtGui.QLabel("Amplitude")
+        lblAmp = QtGui.QLabel("Ampl")
         lblPha = QtGui.QLabel("Phase")
 
         self.ltShell.append(QtGui.QGridLayout())
         self.shellN.append( [QtGui.QLineEdit("4"), QtGui.QLineEdit("0"), QtGui.QLineEdit("8"), QtGui.QCheckBox()])
         self.shellR.append([QtGui.QLineEdit("2"), QtGui.QLineEdit("0"), QtGui.QLineEdit("4"),  QtGui.QCheckBox()])
         self.shellSigma.append([QtGui.QLineEdit("0.001"), QtGui.QLineEdit("0"), QtGui.QLineEdit("1"),  QtGui.QCheckBox()])
-        self.shellC3.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
-        self.shellC4.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
-        self.shellC5.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
-        self.shellC6.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC3.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC4.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC5.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC6.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
 #        self.shellE0.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.0001"), QtGui.QCheckBox()])
         self.shellAmp.append(QtGui.QComboBox())
         self.shellPha.append(QtGui.QComboBox())
@@ -201,7 +201,7 @@ class FitWindow(QtGui.QDialog):
         self.shellAmp[0].addItem("E:/work/development/xaslib/fit/amp0001.dat")
         self.shellPha[0].addItem("E:/work/development/xaslib/fit/pha0001.dat")
         
-        for j in range(6):
+        for j in range(7):
             self.ltShell[0].addWidget(QtGui.QLabel("Min. limit"), j, 2)
             self.ltShell[0].addWidget(QtGui.QLabel("Max. limit"), j, 4)
 #            self.ltShell[0].addWidget(QtGui.QLabel("Accuracy"), j, 6)
@@ -307,22 +307,22 @@ class FitWindow(QtGui.QDialog):
                 self.shellSigma[i][2].setText("{:.4f}".format(self.fit_params[i][2][2]))
                 self.shellSigma[i][3].setChecked(bool(self.fit_params[i][2][3]))
                 
-                self.shellC3[i][0].setText("{:.4f}".format(self.fit_params[i][3][0]))
+                self.shellC3[i][0].setText("{:.4E}".format(self.fit_params[i][3][0]))
                 self.shellC3[i][1].setText("{:.4f}".format(self.fit_params[i][3][1]))
                 self.shellC3[i][2].setText("{:.4f}".format(self.fit_params[i][3][2]))
                 self.shellC3[i][3].setChecked(bool(self.fit_params[i][3][3]))
                 
-                self.shellC4[i][0].setText("{:.4f}".format(self.fit_params[i][4][0]))
+                self.shellC4[i][0].setText("{:.4E}".format(self.fit_params[i][4][0]))
                 self.shellC4[i][1].setText("{:.4f}".format(self.fit_params[i][4][1]))
                 self.shellC4[i][2].setText("{:.4f}".format(self.fit_params[i][4][2]))
                 self.shellC4[i][3].setChecked(bool(self.fit_params[i][4][3]))
                 
-                self.shellC5[i][0].setText("{:.4f}".format(self.fit_params[i][5][0]))
+                self.shellC5[i][0].setText("{:.4E}".format(self.fit_params[i][5][0]))
                 self.shellC5[i][1].setText("{:.4f}".format(self.fit_params[i][5][1]))
                 self.shellC5[i][2].setText("{:.4f}".format(self.fit_params[i][5][2]))
                 self.shellC5[i][3].setChecked(bool(self.fit_params[i][5][3]))
                 
-                self.shellC6[i][0].setText("{:.4f}".format(self.fit_params[i][6][0]))
+                self.shellC6[i][0].setText("{:.4E}".format(self.fit_params[i][6][0]))
                 self.shellC6[i][1].setText("{:.4f}".format(self.fit_params[i][6][1]))
                 self.shellC6[i][2].setText("{:.4f}".format(self.fit_params[i][6][2]))
                 self.shellC6[i][3].setChecked(bool(self.fit_params[i][6][3]))
@@ -528,7 +528,11 @@ class FitWindow(QtGui.QDialog):
         self.edtFitMessage.setText(lsq_result.message)
 
         for i in range(len(lsq_result.x)):
-            edtVarBoxes[i].setText("{:.5f}".format(lsq_result.x[i]))
+            if i in [0,1,2]:
+                edtVarBoxes[i].setText("{:.5f}".format(lsq_result.x[i]))
+            else:
+                edtVarBoxes[i].setText("{:.2E}".format(lsq_result.x[i]))
+                
         
         
         
@@ -668,7 +672,7 @@ class FitWindow(QtGui.QDialog):
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
         dlg.setNameFilters(["All files (*.*)", "Amplitude files (*.amp)"])
-        dlg.setDirectory(os.getcwd())
+#        dlg.setDirectory(os.getcwd())
         if dlg.exec():
             self.fnamp = dlg.selectedFiles()
         else:
@@ -701,7 +705,7 @@ class FitWindow(QtGui.QDialog):
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
         dlg.setNameFilters(["All files (*.*)", "Amplitude files (*.pha)"])
-        dlg.setDirectory(os.getcwd())
+#        dlg.setDirectory(os.getcwd())
         if dlg.exec():
             self.fnpha = dlg.selectedFiles()
         else:
@@ -721,7 +725,7 @@ class FitWindow(QtGui.QDialog):
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
         dlg.setNameFilters(["All files (*.*)"])
-        dlg.setDirectory(os.getcwd())
+#        dlg.setDirectory(os.getcwd())
         if dlg.exec():
             self.fnfeff = dlg.selectedFiles()
         else:
