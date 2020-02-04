@@ -198,8 +198,8 @@ class FitWindow(QtGui.QDialog):
         self.ltShell[0].addWidget(self.shellAmp[0], 7, 1, 1, 7)
         self.ltShell[0].addWidget(self.shellPha[0], 8, 1, 1, 7)
         
-        self.shellAmp[0].addItem("E:/work/development/xaslib/fit/amp0001.dat")
-        self.shellPha[0].addItem("E:/work/development/xaslib/fit/pha0001.dat")
+        # self.shellAmp[0].addItem("E:/work/development/xaslib/fit/amp0001.dat")
+        # self.shellPha[0].addItem("E:/work/development/xaslib/fit/pha0001.dat")
         
         for j in range(7):
             self.ltShell[0].addWidget(QtGui.QLabel("Min. limit"), j, 2)
@@ -227,6 +227,9 @@ class FitWindow(QtGui.QDialog):
         
         self.btnFit = QtGui.QPushButton('Fit')
         self.btnFit.clicked.connect(self.Fit_leastsquares)
+
+        self.btnSaveFit = QtGui.QPushButton('Save Fit results')
+        self.btnSaveFit.clicked.connect(self.saveFit)
         
         self.btnApply = QtGui.QPushButton('Apply')
         self.btnApply.clicked.connect(self.apply)
@@ -262,8 +265,9 @@ class FitWindow(QtGui.QDialog):
         lfig.addLayout(lfit, 3, 0)
         
         lfig.addWidget(self.btnFit, 4, 0)
-        lfig.addWidget(self.btnApply, 5, 0)
-        lfig.addWidget(self.btnCancel, 6, 0)
+        lfig.addWidget(self.btnSaveFit, 5, 0)
+        lfig.addWidget(self.btnApply, 6, 0)
+        lfig.addWidget(self.btnCancel, 7, 0)
         
         lfig.addWidget(self.lblkmin, 0,1)
         lfig.addWidget(self.edtkmin, 0,2)
@@ -284,12 +288,14 @@ class FitWindow(QtGui.QDialog):
         if self.savedshellnr > 1:
             for i in range(0,self.savedshellnr-1):
                 self.addshell()
+
+        self.edtkmin.setText("{:.2f}".format(self.ksettings[0][0]))
+        self.edtkmax.setText("{:.2f}".format(self.ksettings[0][1]))
+        self.edtdk.setText("{:.2f}".format(self.ksettings[0][2]))
                 
         if self.isfitted == 1: #fill with saved fitting params
             self.edtOptimality.setText("{:E}".format(self.costfunction))
-            self.edtkmin.setText("{:.4f}".format(self.ksettings[0][0]))
-            self.edtkmax.setText("{:.4f}".format(self.ksettings[0][1]))
-            self.edtdk.setText("{:.4f}".format(self.ksettings[0][2]))
+
 
             for i in range(self.shellnr):
                 self.shellN[i][0].setText("{:.4f}".format(self.fit_params[i][0][0]))
@@ -406,14 +412,14 @@ class FitWindow(QtGui.QDialog):
         kstart = float(self.edtkmin.text())
         kend = float(self.edtkmax.text())
         dk = float(self.edtdk.text())
-        common_k = np.arange(kstart, kend, dk)
+        self.common_k = np.arange(kstart, kend, dk)
         
         maxiterations = int(self.edtMaxiterations.text())
 
         #prepare variable and parameter array
         
         splbft = InterpolatedUnivariateSpline(self.k, self.bft)
-        common_bft = splbft(common_k)
+        common_bft = splbft(self.common_k)
         
         varbounds = [[],[]]
         par = []
@@ -496,18 +502,13 @@ class FitWindow(QtGui.QDialog):
             splamp = InterpolatedUnivariateSpline(self.kamp[i], self.amp_orig[i])
             splpha = InterpolatedUnivariateSpline(self.kpha[i], self.pha_orig[i])
 
-            amp.append(splamp(common_k))
-            pha.append(splpha(common_k))
+            amp.append(splamp(self.common_k))
+            pha.append(splpha(self.common_k))
                 
             
          
         varbounds[0] = tuple(varbounds[0])
         varbounds[1] = tuple(varbounds[1])
-#        print(varbounds)
-#        print(par)
-#        print(var_par)
-#        print(X)
-        
         
         lsq_result = least_squares(exafsfit_lsq, np.array(X), \
 #                                   method = 'dogbox',
@@ -520,7 +521,7 @@ class FitWindow(QtGui.QDialog):
 #                                   f_scale=0.1,
                                     verbose = 0,
 #                                    x_scale = [1,1,0.001],
-                                   args=(common_k, common_bft, amp, pha, par, var_par, self.shellnr, 2))
+                                   args=(self.common_k, common_bft, amp, pha, par, var_par, self.shellnr, 2))
 
 
         self.edtFuncEval.setText("{:d}".format(lsq_result.nfev))
@@ -536,27 +537,27 @@ class FitWindow(QtGui.QDialog):
         
         
         
-        self.window = windowGauss10(common_k, kstart, kend)
+        self.window = windowGauss10(self.common_k, kstart, kend)
         self.bftw = common_bft * self.window
-        self.r, self.fr, self.fi = FT(common_k, self.bftw, 0, 4, 0.02)
+        self.r, self.fr, self.fi = FT(self.common_k, self.bftw, 0, 4, 0.02)
         self.efr = np.sqrt(self.fr*self.fr + self.fi*self.fi)
         self.efi = self.fi * (-1)
         print(lsq_result.x)
-        self.fit_result = exafsfit_lsq(lsq_result.x, common_k, common_bft, amp, pha, par, var_par, self.shellnr, 2)+common_bft
+        self.fit_result = exafsfit_lsq(lsq_result.x, self.common_k, common_bft, amp, pha, par, var_par, self.shellnr, 2)+common_bft
         fit_result_w = self.fit_result * self.window
-        res_r, res_fr, res_fi = FT(common_k, fit_result_w, 0, 4, 0.02)
-        res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
-        res_efi = res_fi * (-1)
+        self.res_r, res_fr, res_fi = FT(self.common_k, fit_result_w, 0, 4, 0.02)
+        self.res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
+        self.res_efi = res_fi * (-1)
         
         self.ax_bft.clear()
         self.ax_bftft.clear()
         self.ax_bft.plot(self.k, self.bft)
-        self.ax_bft.plot(common_k, self.fit_result)
-#        self.ax_bft.plot(common_k, lsq_result.fun)
+        self.ax_bft.plot(self.common_k, self.fit_result)
+#        self.ax_bft.plot(self.common_k, lsq_result.fun)
 #        self.ax_bft.plot(self.k, exafsfit(X, self.k, self.bft, amp, pha, 1)+self.bft)
-#        self.ax_bft.plot(common_k, amp[0])
-#        self.ax_bft.plot(common_k, pha[0])
-#        self.ax_bft.plot(common_k, amp[0]*np.sin(pha[0]) * common_k**2)
+#        self.ax_bft.plot(self.common_k, amp[0])
+#        self.ax_bft.plot(self.common_k, pha[0])
+#        self.ax_bft.plot(self.common_k, amp[0]*np.sin(pha[0]) * self.common_k**2)
 
         self.ax_bftft.clear()
         
@@ -565,7 +566,7 @@ class FitWindow(QtGui.QDialog):
         line2.set_color('b')
         line2.set_linestyle('dotted')
         
-        line1, line2 = self.ax_bftft.plot( res_r,  res_efr, res_r,  res_efi)
+        line1, line2 = self.ax_bftft.plot( self.res_r,  self.res_efr, self.res_r,  self.res_efi)
         line1.set_color('r')
         line2.set_color('r')
         line2.set_linestyle('dotted')
@@ -652,8 +653,8 @@ class FitWindow(QtGui.QDialog):
             kstart = float(self.edtkmin.text())
             kend = float(self.edtkmax.text())
             dk = float(self.edtdk.text())
-            common_k = np.arange(kstart, kend, dk)
-            self.ax_bft.plot(common_k, self.fit_result)
+            self.common_k = np.arange(kstart, kend, dk)
+            self.ax_bft.plot(self.common_k, self.fit_result)
         
     def openamp(self):
 #        self.file_opt = options = {}
@@ -793,10 +794,10 @@ class FitWindow(QtGui.QDialog):
         self.shellN.append( [QtGui.QLineEdit("4"), QtGui.QLineEdit("0"), QtGui.QLineEdit("8"),  QtGui.QCheckBox()])
         self.shellR.append([QtGui.QLineEdit("2"), QtGui.QLineEdit("0"), QtGui.QLineEdit("4"),  QtGui.QCheckBox()])
         self.shellSigma.append([QtGui.QLineEdit("0.001"), QtGui.QLineEdit("0"), QtGui.QLineEdit("1"),  QtGui.QCheckBox()])
-        self.shellC3.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
-        self.shellC4.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
-        self.shellC5.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
-        self.shellC6.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC3.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC4.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC5.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
+        self.shellC6.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("-0.1"), QtGui.QLineEdit("0.1"),  QtGui.QCheckBox()])
 #        self.shellE0.append([QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0"), QtGui.QLineEdit("0.0001"), QtGui.QCheckBox()])
         self.shellAmp.append(QtGui.QComboBox())
         self.shellPha.append(QtGui.QComboBox())
@@ -841,7 +842,7 @@ class FitWindow(QtGui.QDialog):
         
 
         
-        for j in range(6):
+        for j in range(7):
             self.ltShell[self.shellnr].addWidget(QtGui.QLabel("Min. limit"), j, 2)
             self.ltShell[self.shellnr].addWidget(QtGui.QLabel("Max. limit"), j, 4)
 #            self.ltShell[self.shellnr].addWidget(QtGui.QLabel("Accuracy"), j, 6)
@@ -895,8 +896,7 @@ class FitWindow(QtGui.QDialog):
         
         self.kamp[which_shell] = ampk
         self.amp_orig[which_shell] = ampo
-     
-        
+
     def PhaChanged(self):
         which_shell = -1
         sender = self.sender()
@@ -909,4 +909,51 @@ class FitWindow(QtGui.QDialog):
     
         self.kpha[which_shell] = phak
         self.pha_orig[which_shell] = phao
-        
+
+    def saveFit(self):
+
+        fn = self.savefiledialog_qtgui()
+        if fn == "":
+            return
+
+        column_captions = ""
+        save_data = []
+        for i in range(self.shellnr):
+            column_captions = column_captions + "Shell{:d} ".format(i)
+            values = []
+            values.append(float(self.shellN[i][0].text()))
+            values.append(float(self.shellR[i][0].text()))
+            values.append(float(self.shellSigma[i][0].text()))
+            values.append(float(self.shellC3[i][0].text()))
+            values.append(float(self.shellC4[i][0].text()))
+            values.append(float(self.shellC5[i][0].text()))
+            values.append(float(self.shellC6[i][0].text()))
+
+            save_data.append(values)
+
+        np.savetxt(fn + ".fitdata", np.transpose(save_data), header=column_captions)
+
+        column_captions = "k exafs_fit"
+        save_array = []
+        save_array.append(self.common_k)
+        save_array.append(self.fit_result)
+        np.savetxt(fn + ".fitexafs", np.transpose(save_array), header=column_captions)
+
+        column_captions = "r ft_real ft_im"
+        save_array = []
+        save_array.append(self.res_r)
+        save_array.append(self.res_efr)
+        save_array.append(self.res_efi)
+        np.savetxt(fn + ".fitft", np.transpose(save_array), header=column_captions)
+
+    def savefiledialog_qtgui(self):
+        dlg = QtGui.QFileDialog()
+        dlg.setFileMode(QtGui.QFileDialog.AnyFile)
+        dlg.setAcceptMode(1)  # save dialog
+        dlg.setNameFilters(["All files (*.*)"])
+        #        dlg.setDirectory(self.currentdir)
+        if dlg.exec_():
+            flist = dlg.selectedFiles()
+            return flist[0]
+        else:
+            return ""

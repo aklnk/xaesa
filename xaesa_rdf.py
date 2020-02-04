@@ -525,19 +525,19 @@ class RdfWindow(QtGui.QDialog):
         fn = self.savefiledialog_qtgui()
         if fn == "":
             return 
-        column_captions = "#r rdf k"
+        column_captions = "r rdf"
         save_array = []
         save_array.append(self.rdf_r)
         save_array.append(self.rdf)        
         np.savetxt(fn+".rdf", np.transpose(save_array), header=column_captions)
         
-        column_captions = "#k exafs_rdf"
+        column_captions = "k exafs_rdf"
         save_array = []
         save_array.append(self.common_k)
         save_array.append(self.fit_result)
         np.savetxt(fn+".rdfexafs", np.transpose(save_array), header=column_captions)
         
-        column_captions = "#r ft_real ft_im"
+        column_captions = "r ft_real ft_im"
         save_array = []
         save_array.append(self.r)
         save_array.append(self.efr)

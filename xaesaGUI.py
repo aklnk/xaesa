@@ -2290,7 +2290,7 @@ class MyWindow(QtGui.QMainWindow):
                 try:
                     self.dataClasses[-1].Es = grp.get("Es").value
                 except:
-                    self.dataClasses[-1].Es = 0
+                    self.dataClasses[-1].Es = self.dataClasses[-1].E1 - 100
 
                 try:
                     self.dataClasses[-1].energyShift = grp.get("energyShift").value
@@ -2441,7 +2441,8 @@ class MyWindow(QtGui.QMainWindow):
             
         if isinstance(self.dataClasses[cnr], xaesa_exafs_class):    
         
-            self.copiedparamsXAS = [self.dataClasses[cnr].E0,
+            self.copiedparamsXAS = [
+                                 self.dataClasses[cnr].E0,
                                  self.dataClasses[cnr].E1,
                                  self.dataClasses[cnr].E2,
                                  self.dataClasses[cnr].E3,
@@ -2458,7 +2459,9 @@ class MyWindow(QtGui.QMainWindow):
                                  self.dataClasses[cnr].dr,                    
                                  self.dataClasses[cnr].rMinBft,
                                  self.dataClasses[cnr].rMaxBft,
-                                 self.dataClasses[cnr].bftWindowParam]
+                                 self.dataClasses[cnr].bftWindowParam,
+                                 self.dataClasses[cnr].Es
+            ]
         
             print("XAS params copied")
     
@@ -2509,6 +2512,8 @@ class MyWindow(QtGui.QMainWindow):
                 self.dataClasses[y].rMinBft = self.copiedparamsXAS[15]
                 self.dataClasses[y].rMaxBft = self.copiedparamsXAS[16]
                 self.dataClasses[y].bftWindowParam = self.copiedparamsXAS[17]
+
+                self.dataClasses[y].Es = self.copiedparamsXAS[18]
                 
                 self.dataClasses[y].redoExtraction()
                 
@@ -2561,6 +2566,8 @@ class MyWindow(QtGui.QMainWindow):
         
         fw.bft = copy(self.dataClasses[cnr].bftEXAFS)
         fw.k = copy(self.dataClasses[cnr].bftk)
+        fw.ksettings = [[0.5, self.dataClasses[cnr].bftk[-1], 0.05]]
+        fw.updateUI()
         fw.bftft()
         fw.plot()
         
