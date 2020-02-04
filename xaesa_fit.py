@@ -419,7 +419,7 @@ class FitWindow(QtGui.QDialog):
         #prepare variable and parameter array
         
         splbft = InterpolatedUnivariateSpline(self.k, self.bft)
-        common_bft = splbft(self.common_k)
+        self.common_bft = splbft(self.common_k)
         
         varbounds = [[],[]]
         par = []
@@ -521,8 +521,7 @@ class FitWindow(QtGui.QDialog):
 #                                   f_scale=0.1,
                                     verbose = 0,
 #                                    x_scale = [1,1,0.001],
-                                   args=(self.common_k, common_bft, amp, pha, par, var_par, self.shellnr, 2))
-
+                                   args=(self.common_k, self.common_bft, amp, pha, par, var_par, self.shellnr, 2))
 
         self.edtFuncEval.setText("{:d}".format(lsq_result.nfev))
         self.edtOptimality.setText("{:e}".format(lsq_result.cost))
@@ -533,17 +532,14 @@ class FitWindow(QtGui.QDialog):
                 edtVarBoxes[i].setText("{:.5f}".format(lsq_result.x[i]))
             else:
                 edtVarBoxes[i].setText("{:.2E}".format(lsq_result.x[i]))
-                
-        
-        
         
         self.window = windowGauss10(self.common_k, kstart, kend)
-        self.bftw = common_bft * self.window
+        self.bftw = self.common_bft * self.window
         self.r, self.fr, self.fi = FT(self.common_k, self.bftw, 0, 4, 0.02)
         self.efr = np.sqrt(self.fr*self.fr + self.fi*self.fi)
         self.efi = self.fi * (-1)
-        print(lsq_result.x)
-        self.fit_result = exafsfit_lsq(lsq_result.x, self.common_k, common_bft, amp, pha, par, var_par, self.shellnr, 2)+common_bft
+
+        self.fit_result = exafsfit_lsq(lsq_result.x, self.common_k, self.common_bft, amp, pha, par, var_par, self.shellnr, 2)+self.common_bft
         fit_result_w = self.fit_result * self.window
         self.res_r, res_fr, res_fi = FT(self.common_k, fit_result_w, 0, 4, 0.02)
         self.res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
@@ -553,11 +549,6 @@ class FitWindow(QtGui.QDialog):
         self.ax_bftft.clear()
         self.ax_bft.plot(self.k, self.bft)
         self.ax_bft.plot(self.common_k, self.fit_result)
-#        self.ax_bft.plot(self.common_k, lsq_result.fun)
-#        self.ax_bft.plot(self.k, exafsfit(X, self.k, self.bft, amp, pha, 1)+self.bft)
-#        self.ax_bft.plot(self.common_k, amp[0])
-#        self.ax_bft.plot(self.common_k, pha[0])
-#        self.ax_bft.plot(self.common_k, amp[0]*np.sin(pha[0]) * self.common_k**2)
 
         self.ax_bftft.clear()
         
@@ -572,8 +563,7 @@ class FitWindow(QtGui.QDialog):
         line2.set_linestyle('dotted')
         
         self.canv.draw()
-        
-        
+
     def apply(self):
         self.fit_params = []
         self.fit_amps = []
@@ -613,7 +603,7 @@ class FitWindow(QtGui.QDialog):
                                     [float(self.shellC6[i][0].text()),
                                     float(self.shellC6[i][1].text()),
                                     float(self.shellC6[i][2].text()),
-                                    int(self.shellC6[i][3].isChecked())] ] )
+                                    int(self.shellC6[i][3].isChecked())]])
             
             self.fit_amps.append( self.kamp[i])
             self.fit_amps.append( self.amp_orig[i])
@@ -657,18 +647,6 @@ class FitWindow(QtGui.QDialog):
             self.ax_bft.plot(self.common_k, self.fit_result)
         
     def openamp(self):
-#        self.file_opt = options = {}
-#        options['defaultextension'] = '.fio'
-#        options['filetypes'] = [('all files', '.*'), ('text files', '.txt'), ('fio files', '.fio')]
-#        #options['initialdir'] = 'C:\\'
-#        #options['initialfile'] = 'myfile.txt'
-#        #options['parent'] = root
-#        #options['title'] = 'Open'
-#        options['multiple'] = 1
-#
-#        Tk().withdraw()
-#        self.fnamp = list(askopenfilename(**self.file_opt))
-
         dlg = QtGui.QFileDialog()
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
         dlg.setAcceptMode(0) # open dialog
@@ -680,27 +658,11 @@ class FitWindow(QtGui.QDialog):
             return
         
         self.fnamp.sort()
-        
-#        self.fnampsplit = []
-#        
-#        for i in range(0, len(self.fnamp)):
-#            head, tail = os.path.split(self.fnamp[i])
-#            self.fnampsplit.append(tail)
+
         for i in range(len(self.shellAmp)):
             self.shellAmp[i].addItems(self.fnamp)
             
     def openpha(self):
-#        self.file_opt = options = {}
-#        options['defaultextension'] = '.fio'
-#        options['filetypes'] = [('all files', '.*'), ('text files', '.txt'), ('fio files', '.fio')]
-#        #options['initialdir'] = 'C:\\'
-#        #options['initialfile'] = 'myfile.txt'
-#        #options['parent'] = root
-#        #options['title'] = 'Open'
-#        options['multiple'] = 1
-#
-#        Tk().withdraw()
-#        self.fnpha = list(askopenfilename(**self.file_opt))
         
         dlg = QtGui.QFileDialog()
         dlg.setFileMode(QtGui.QFileDialog.ExistingFiles)
@@ -712,11 +674,6 @@ class FitWindow(QtGui.QDialog):
         else:
             return
         self.fnpha.sort()
-#        self.fnphasplit = []
-#        
-#        for i in range(0, len(self.fnpha)):
-#            head, tail = os.path.split(self.fnpha[i])
-#            self.fnphasplit.append(tail)
 
         for i in range(len(self.shellPha)):
             self.shellPha[i].addItems(self.fnpha)
@@ -762,9 +719,7 @@ class FitWindow(QtGui.QDialog):
                 amp = float(data[j][2]) * np.exp( -2 * r / float(data[j][5])) * float(data[j][4])
                 new_data_amp.append([k, amp])
                 new_data_pha.append([k, pha])
-            
-#            print(new_data_amp)
-#            print(new_data_pha)
+
             np.savetxt(self.fnfeff[i] + '.amp', new_data_amp)
             np.savetxt(self.fnfeff[i] + '.pha', new_data_pha)
             
@@ -933,17 +888,22 @@ class FitWindow(QtGui.QDialog):
 
         np.savetxt(fn + ".fitdata", np.transpose(save_data), header=column_captions)
 
-        column_captions = "k exafs_fit"
+        column_captions = "k exafs_fit exafs_exp"
         save_array = []
         save_array.append(self.common_k)
         save_array.append(self.fit_result)
+        save_array.append(self.common_bft)
+
         np.savetxt(fn + ".fitexafs", np.transpose(save_array), header=column_captions)
 
-        column_captions = "r ft_real ft_im"
+        column_captions = "r_fit ft_real_fit ft_im_fit r_exp ft_real_exp ft_im_exp"
         save_array = []
         save_array.append(self.res_r)
         save_array.append(self.res_efr)
         save_array.append(self.res_efi)
+        save_array.append(self.r)
+        save_array.append(self.efr)
+        save_array.append(self.efi)
         np.savetxt(fn + ".fitft", np.transpose(save_array), header=column_captions)
 
     def savefiledialog_qtgui(self):

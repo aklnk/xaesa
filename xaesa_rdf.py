@@ -428,9 +428,9 @@ class RdfWindow(QtGui.QDialog):
         
         fit_result = exafsrdf(Xi, self.common_k, self.common_bft, self.amptimespha, self.dr, self.kpow)+self.common_bft
         fit_result_w = fit_result * self.window
-        res_r, res_fr, res_fi = FT(self.common_k, fit_result_w, 0, 4, 0.02)
-        res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
-        res_efi = res_fi * (-1)
+        self.res_r, res_fr, res_fi = FT(self.common_k, fit_result_w, 0, 4, 0.02)
+        self.res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
+        self.res_efi = res_fi * (-1)
         
         self.line1_bft.set_xdata(self.k)
         self.line1_bft.set_ydata(self.bft)
@@ -443,11 +443,11 @@ class RdfWindow(QtGui.QDialog):
         self.line2_bftft.set_xdata(self.r)
         self.line2_bftft.set_ydata(self.efi)
         
-        self.line3_bftft.set_xdata(res_r)
-        self.line3_bftft.set_ydata(res_efr)
+        self.line3_bftft.set_xdata(self.res_r)
+        self.line3_bftft.set_ydata(self.res_efr)
         
-        self.line4_bftft.set_xdata(res_r)
-        self.line4_bftft.set_ydata(res_efi)
+        self.line4_bftft.set_xdata(self.res_r)
+        self.line4_bftft.set_ydata(self.res_efi)
         
         self.line1_rdf.set_xdata(self.rdf_r)
         self.line1_rdf.set_ydata(Xi)
@@ -479,8 +479,8 @@ class RdfWindow(QtGui.QDialog):
         self.fit_result = exafsrdf(lsq_result.x, self.common_k, self.common_bft, self.amptimespha, self.dr, self.kpow)+self.common_bft
         fit_result_w = self.fit_result * self.window
         res_r, res_fr, res_fi = FT(self.common_k, fit_result_w, 0, 4, 0.02)
-        res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
-        res_efi = res_fi * (-1)
+        self.res_efr = np.sqrt(res_fr*res_fr + res_fi*res_fi)
+        self.res_efi = res_fi * (-1)
         
         self.rdf_exafs = self.fit_result
         self.rdf_exafs_k = self.common_k
@@ -497,10 +497,10 @@ class RdfWindow(QtGui.QDialog):
         self.line2_bftft.set_ydata(self.efi)
         
         self.line3_bftft.set_xdata(res_r)
-        self.line3_bftft.set_ydata(res_efr)
+        self.line3_bftft.set_ydata(self.res_efr)
         
         self.line4_bftft.set_xdata(res_r)
-        self.line4_bftft.set_ydata(res_efi)
+        self.line4_bftft.set_ydata(self.res_efi)
         
         self.line1_rdf.set_xdata(self.rdf_r)
         self.line1_rdf.set_ydata(lsq_result.x)
@@ -531,14 +531,18 @@ class RdfWindow(QtGui.QDialog):
         save_array.append(self.rdf)        
         np.savetxt(fn+".rdf", np.transpose(save_array), header=column_captions)
         
-        column_captions = "k exafs_rdf"
+        column_captions = "k exafs_rdf exafs_exp"
         save_array = []
         save_array.append(self.common_k)
         save_array.append(self.fit_result)
+        save_array.append(self.common_bft)
         np.savetxt(fn+".rdfexafs", np.transpose(save_array), header=column_captions)
         
-        column_captions = "r ft_real ft_im"
+        column_captions = "r_rdf ft_real_rdf ft_im_rdf r_exp ft_real_exp ft_im_exp"
         save_array = []
+        save_array.append(self.res_r)
+        save_array.append(self.res_efr)
+        save_array.append(self.res_efi)
         save_array.append(self.r)
         save_array.append(self.efr)
         save_array.append(self.efi)
