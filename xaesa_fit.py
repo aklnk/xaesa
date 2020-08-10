@@ -291,7 +291,7 @@ class FitWindow(QtGui.QDialog):
 
         self.edtkmin.setText("{:.2f}".format(self.ksettings[0][0]))
         self.edtkmax.setText("{:.2f}".format(self.ksettings[0][1]))
-        self.edtdk.setText("{:.2f}".format(self.ksettings[0][2]))
+        self.edtdk.setText("{:.3f}".format(self.ksettings[0][2]))
                 
         if self.isfitted == 1: #fill with saved fitting params
             self.edtOptimality.setText("{:E}".format(self.costfunction))

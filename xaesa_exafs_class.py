@@ -696,14 +696,20 @@ class xaesa_exafs_class():
         self.kPower = newKPower
         
     def redoExtraction(self):
-        self.removeBackground()
-        self.findMju0()
-        self.calculateEXAFS()
-        self.calculateEXAFSZLC()
-        self.ftEXAFS()
-        self.ftEXAFSZLC()
-        self.bftEXAFSZLC()
-        
+        if self.raw_data_type == 2: # 2 for Mju
+            self.removeBackground()
+            self.findMju0()
+            self.calculateEXAFS()
+            self.calculateEXAFSZLC()
+            self.ftEXAFS()
+            self.ftEXAFSZLC()
+            self.bftEXAFSZLC()
+        if self.raw_data_type == 3: # 3 for EXAFS
+            self.calculateEXAFSZLC()
+            self.ftEXAFS()
+            self.ftEXAFSZLC()
+            self.bftEXAFSZLC()
+            
     def redoFtBft(self):
         self.ftEXAFS()
         self.ftEXAFSZLC()

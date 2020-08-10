@@ -5,7 +5,7 @@
 #@author: sasha
 #"""
 
-XAESA_VERSION = "0.03"
+XAESA_VERSION = "0.04"
 GUI_SETTINGS_ID = "XAESA" + XAESA_VERSION
 
 import sys
@@ -58,7 +58,7 @@ if QTVer == 5:
 
 from numpy import asarray, fromstring, genfromtxt, gradient, argmax, zeros, sqrt, sin, transpose, \
                     array, savetxt, copy, delete, arange, exp, argmin, concatenate, all, diff,  \
-                    append, where, absolute, logical_and, delete, reshape
+                    append, where, absolute, logical_and, reshape, max, min, average
 
 #from .ft import FT, BFTWindow, BFT, GETPHASE
 
@@ -2171,8 +2171,9 @@ class MyWindow(QtGui.QMainWindow):
                 grp.create_dataset("smoothFactor", data = self.dataClasses[i].smoothFactor)
 
         fhdf5.close()
+        
+        self.setWindowTitle("XAESA - X-ray Absorption and Emission Analytics --- " + tail)
 
-        return
 
     def openhdf5(self):
             
@@ -2421,6 +2422,7 @@ class MyWindow(QtGui.QMainWindow):
   
    
         f.close()
+        self.setWindowTitle("XAESA - X-ray Absorption and Emission Analytics --- " + tail)
 
 #        self.current = 0
 #        self.lstSpectra.setCurrentRow(0)        
@@ -2553,6 +2555,10 @@ class MyWindow(QtGui.QMainWindow):
         fw = FitWindow()
         fw.setWindowTitle("FIT "+self.lstSpectra.currentItem().text())
         
+        fw.bft = copy(self.dataClasses[cnr].bftEXAFS)
+        fw.k = copy(self.dataClasses[cnr].bftk)
+        fw.ksettings = [[0.5, self.dataClasses[cnr].bftk[-1], 0.05]]
+        
         if self.dataClasses[cnr].isFitted == 1:
             fw.fit_result = copy(self.dataClasses[cnr].fitExafs)
             fw.savedshellnr = self.dataClasses[cnr].fitNShels
@@ -2562,11 +2568,7 @@ class MyWindow(QtGui.QMainWindow):
             fw.costfunction = 0 #self.fit_costfunction[cnr]
             fw.ksettings = [[self.dataClasses[cnr].fitKMin, self.dataClasses[cnr].fitKMax, self.dataClasses[cnr].fitdk]]
             fw.isfitted = 1
-            fw.updateUI()
         
-        fw.bft = copy(self.dataClasses[cnr].bftEXAFS)
-        fw.k = copy(self.dataClasses[cnr].bftk)
-        fw.ksettings = [[0.5, self.dataClasses[cnr].bftk[-1], 0.05]]
         fw.updateUI()
         fw.bftft()
         fw.plot()
@@ -2897,32 +2899,36 @@ class MyWindow(QtGui.QMainWindow):
         
         selectedRows = [x.row() for x in selected_indexes]
         
-        #check if all datasets with the same length
+        #find range where all curves are defined
+        min_e_all = asarray([min(self.dataClasses[x].energy) for x in selectedRows])
+        max_e_all = asarray([max(self.dataClasses[x].energy) for x in selectedRows])
+        min_e = max(min_e_all)
+        max_e = min(max_e_all)
         
-        elementsCount = asarray([len(self.dataClasses[x].mju) for x in selectedRows])
-        if sum( elementsCount - elementsCount[0] ) != 0: #not all arrays are the same length
-            msgBox = QtGui.QMessageBox()
-            msgBox.setText("Not all arrays are the same length. Can't average.")
-#            msgBox.setInformativeText("Do you want to save your changes?")
-            msgBox.setStandardButtons(QtGui.QMessageBox.Yes)
-            msgBox.exec_()
-            return
+        #find average delta energy
+        average_diff_all = [average(diff(self.dataClasses[x].energy)) for x in selectedRows]
+        average_diff = average(average_diff_all)
+        
+        common_e = arange(min_e, max_e, average_diff)
 
-        
-        average = array(self.dataClasses[selectedRows[0]].mju)
-        name = "mju_average " + str(selectedRows[0])
+        spl = InterpolatedUnivariateSpline(self.dataClasses[selectedRows[0]].energy, self.dataClasses[selectedRows[0]].mju)
+        new_vals = spl(common_e)
+        av = array(new_vals)
+        name = "mu_average " + str(selectedRows[0])
         for i in selectedRows[1:]:
             name = name + " + " + str(i)
-            average = average + self.dataClasses[i].mju
-        average = average / len(list(selected_indexes))
+            spl = InterpolatedUnivariateSpline(self.dataClasses[i].energy, self.dataClasses[i].mju)
+            new_vals = spl(common_e)
+            av = av + new_vals
+        av = av / len(list(selected_indexes))
         
         
         self.lstSpectra.addItem(name)
         
         self.dataClasses.append(xaesa_exafs_class(2)) # mju
         
-        self.dataClasses[-1].energy =  self.dataClasses[selectedRows[0]].energy
-        self.dataClasses[-1].mju =  average
+        self.dataClasses[-1].energy =  common_e
+        self.dataClasses[-1].mju =  av
         
         self.dataClasses[-1].E0 =  self.dataClasses[selectedRows[0]].E0
         self.dataClasses[-1].E1 =  self.dataClasses[selectedRows[0]].E1
@@ -2996,7 +3002,64 @@ class MyWindow(QtGui.QMainWindow):
         self.dataClasses[-1].processExpData()
                             
     def averageExafs(self):
-        pass
+        selected_indexes = self.lstSpectra.selectedIndexes()
+        
+        if len(selected_indexes) == 0:
+            return
+        
+        selectedRows = [x.row() for x in selected_indexes]
+        
+        #find range where all curves are defined
+        min_k_all = asarray([min(self.dataClasses[x].k) for x in selectedRows])
+        max_k_all = asarray([max(self.dataClasses[x].k) for x in selectedRows])
+        min_k = max(min_k_all)
+        max_k = min(max_k_all)
+        
+        #find average delta energy
+        average_diff_all = [average(diff(self.dataClasses[x].k)) for x in selectedRows]
+        average_diff = average(average_diff_all)
+        
+        common_k = arange(min_k, max_k, average_diff)
+
+        spl = InterpolatedUnivariateSpline(self.dataClasses[selectedRows[0]].k, self.dataClasses[selectedRows[0]].exafsZLC)
+        new_vals = spl(common_k)
+        av = array(new_vals)
+        name = "exafs_average " + str(selectedRows[0])
+        for i in selectedRows[1:]:
+            name = name + " + " + str(i)
+            spl = InterpolatedUnivariateSpline(self.dataClasses[i].k, self.dataClasses[i].exafsZLC)
+            new_vals = spl(common_k)
+            av = av + new_vals
+        av = av / len(list(selected_indexes))
+        
+        
+        self.lstSpectra.addItem(name)
+        
+        self.dataClasses.append(xaesa_exafs_class(3)) # EXAFS
+        
+        self.dataClasses[-1].k =  common_k
+        self.dataClasses[-1].exafs =  av
+        
+        self.dataClasses[-1].E0 =  0
+        self.dataClasses[-1].E1 =  0
+        self.dataClasses[-1].E2 =  0
+        self.dataClasses[-1].E3 =  0
+        self.dataClasses[-1].zeroLineCorr =  0
+        
+        self.dataClasses[-1].kMin =  self.dataClasses[selectedRows[0]].kMin
+        self.dataClasses[-1].kMax =  self.dataClasses[selectedRows[0]].kMax
+        self.dataClasses[-1].dk =  self.dataClasses[selectedRows[0]].dk
+        self.dataClasses[-1].rMin =  self.dataClasses[selectedRows[0]].rMin
+        self.dataClasses[-1].rMax =  self.dataClasses[selectedRows[0]].rMax
+        self.dataClasses[-1].dr =  self.dataClasses[selectedRows[0]].dr
+        
+        self.dataClasses[-1].kPower =  self.dataClasses[selectedRows[0]].kPower
+        
+        self.dataClasses[-1].rMinBft =  self.dataClasses[selectedRows[0]].rMinBft
+        self.dataClasses[-1].rMaxBft =  self.dataClasses[selectedRows[0]].rMaxBft
+        self.dataClasses[-1].bftWindowParam =  self.dataClasses[selectedRows[0]].bftWindowParam
+        
+        self.dataClasses[-1].processExpData()
     
     def averageXes(self):
         selected_indexes = self.lstSpectra.selectedIndexes()
@@ -3388,6 +3451,16 @@ Remove decreasing data points automaticly ?")
             return
         
         self.dataClasses[cnr].energy = self.dataClasses[cnr].energy + shift
+        
+        if isinstance(self.dataClasses[cnr], xaesa_xes_class):
+            print("shifteing")
+            self.dataClasses[cnr].E0 = self.dataClasses[cnr].E0 + shift
+            self.dataClasses[cnr].E1 = self.dataClasses[cnr].E1 + shift
+            self.dataClasses[cnr].E2 = self.dataClasses[cnr].E2 + shift
+            self.dataClasses[cnr].E3 = self.dataClasses[cnr].E3 + shift
+            self.dataClasses[cnr].eAreaNormMin = self.dataClasses[cnr].eAreaNormMin + shift
+            self.dataClasses[cnr].eAreaNormMax = self.dataClasses[cnr].eAreaNormMax + shift
+
         self.dataClasses[cnr].energyShift = self.dataClasses[cnr].energyShift +shift
         self.lstSpectraItemClicked()
         
