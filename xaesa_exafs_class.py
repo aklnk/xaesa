@@ -696,7 +696,7 @@ class xaesa_exafs_class():
         self.kPower = newKPower
         
     def redoExtraction(self):
-        if self.raw_data_type == 2: # 2 for Mju
+        if self.raw_data_type in [0,1,2]: # 2 for Mju
             self.removeBackground()
             self.findMju0()
             self.calculateEXAFS()
