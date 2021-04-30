@@ -210,7 +210,7 @@ class xaesa_exafs_class():
         self.E1 = self.energy[maxderiv] - (energyMaxDerivValue - self.energy[0])/5
         self.E2 = self.energy[maxderiv] + (self.energy[-1] - energyMaxDerivValue )/5
         self.E3 = self.energy[-1]
-        self.Es = self.E1-100
+        self.Es = self.energy[0]
         
         self.kMax = sqrt(  (2*me/hbar**2) * (self.E3-self.E0) * 1.602*10**-19  ) *10**-10 - 0.5
         
