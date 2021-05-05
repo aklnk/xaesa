@@ -242,8 +242,7 @@ class MyWindow(QtGui.QMainWindow):
         self.edtFluoCols = QtGui.QLineEdit("11 12 13 15 16 17")
         self.edtFluoCols.hide()
         
-        self.edtSkipLines.setFixedWidth(50)
-        self.edtSkipLines.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        
         
         self.edtEnergyCol.setFixedWidth(30)
         self.edtEnergyCol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
@@ -879,7 +878,8 @@ class MyWindow(QtGui.QMainWindow):
         self.btnAverage = QtGui.QPushButton('Average / merge')
         
         self.mnuAverageXAS = QtGui.QMenu()
-        self.mnuAverageXAS.addAction('Average mu', self.averageMju)
+        self.mnuAverageXAS.addAction('Average mu direct', self.averageMjuDirect)
+        self.mnuAverageXAS.addAction('Average mu spline', self.averageMjuSpline)
         self.mnuAverageXAS.addAction('Average EXAFS', self.averageExafs)
         self.mnuAverageXAS.addAction('Merge mu', self.mergeMju)
         
@@ -2890,7 +2890,64 @@ class MyWindow(QtGui.QMainWindow):
         line2.set_color('r')
         line3.set_color('r')
         
-    def averageMju(self): 
+    def averageMjuDirect(self): 
+
+        selected_indexes = self.lstSpectra.selectedIndexes()
+        
+        if len(selected_indexes) == 0:
+            return
+        
+        selectedRows = [x.row() for x in selected_indexes]
+        
+        #check if all datasets with the same length
+        
+        elementsCount = asarray([len(self.dataClasses[x].mju) for x in selectedRows])
+        if sum( elementsCount - elementsCount[0] ) != 0: #not all arrays are the same length
+            msgBox = QtGui.QMessageBox()
+            msgBox.setText("Not all arrays are the same length. Can't average.")
+#            msgBox.setInformativeText("Do you want to save your changes?")
+            msgBox.setStandardButtons(QtGui.QMessageBox.Yes)
+            msgBox.exec_()
+            return
+
+        
+        average = array(self.dataClasses[selectedRows[0]].mju)
+        name = "mju_average " + str(selectedRows[0])
+        for i in selectedRows[1:]:
+            name = name + " + " + str(i)
+            average = average + self.dataClasses[i].mju
+        average = average / len(list(selected_indexes))
+        
+        
+        self.lstSpectra.addItem(name)
+        
+        self.dataClasses.append(xaesa_exafs_class(2)) # mju
+        
+        self.dataClasses[-1].energy =  self.dataClasses[selectedRows[0]].energy
+        self.dataClasses[-1].mju =  average
+        
+        self.dataClasses[-1].E0 =  self.dataClasses[selectedRows[0]].E0
+        self.dataClasses[-1].E1 =  self.dataClasses[selectedRows[0]].E1
+        self.dataClasses[-1].E2 =  self.dataClasses[selectedRows[0]].E2
+        self.dataClasses[-1].E3 =  self.dataClasses[selectedRows[0]].E3
+        self.dataClasses[-1].zeroLineCorr =  self.dataClasses[selectedRows[0]].zeroLineCorr
+        
+        self.dataClasses[-1].kMin =  self.dataClasses[selectedRows[0]].kMin
+        self.dataClasses[-1].kMax =  self.dataClasses[selectedRows[0]].kMax
+        self.dataClasses[-1].dk =  self.dataClasses[selectedRows[0]].dk
+        self.dataClasses[-1].rMin =  self.dataClasses[selectedRows[0]].rMin
+        self.dataClasses[-1].rMax =  self.dataClasses[selectedRows[0]].rMax
+        self.dataClasses[-1].dr =  self.dataClasses[selectedRows[0]].dr
+        
+        self.dataClasses[-1].kPower =  self.dataClasses[selectedRows[0]].kPower
+        
+        self.dataClasses[-1].rMinBft =  self.dataClasses[selectedRows[0]].rMinBft
+        self.dataClasses[-1].rMaxBft =  self.dataClasses[selectedRows[0]].rMaxBft
+        self.dataClasses[-1].bftWindowParam =  self.dataClasses[selectedRows[0]].bftWindowParam
+        
+        self.dataClasses[-1].processExpData()
+        
+    def averageMjuSpline(self): 
 
         selected_indexes = self.lstSpectra.selectedIndexes()
         
