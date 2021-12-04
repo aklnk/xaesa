@@ -2211,161 +2211,161 @@ class MyWindow(QtGui.QMainWindow):
 
             grp = f.get(mainKeyList[i])
             
-            classType = grp.get("classType").value
-            print("classType", classType)
+            classType = grp.get("classType")[()]
+            # print("classType", classType[()])
         ##################### OPEN XAS    
             if classType == 0: #XAS       
 
-                self.dataClasses.append(xaesa_exafs_class(grp.get("raw_data_type").value))
-                self.dataClasses[-1].raw_data_type = grp.get("raw_data_type").value
-                self.dataClasses[-1].name = grp.get("name").value
-                self.dataClasses[-1].energy = grp.get("energy").value
-                self.dataClasses[-1].energyRebined = grp.get("energyRebined").value
-                self.dataClasses[-1].energyOriginal = grp.get("energyOriginal").value
+                self.dataClasses.append(xaesa_exafs_class(grp.get("raw_data_type")[()]))
+                self.dataClasses[-1].raw_data_type = grp.get("raw_data_type")[()]
+                self.dataClasses[-1].name = str(grp.get("name")[()])
+                self.dataClasses[-1].energy = grp.get("energy")[()]
+                self.dataClasses[-1].energyRebined = grp.get("energyRebined")[()]
+                self.dataClasses[-1].energyOriginal = grp.get("energyOriginal")[()]
                 
-                self.dataClasses[-1].i0 = grp.get("i0").value
-                self.dataClasses[-1].i1 = grp.get("i1").value
-                self.dataClasses[-1].i2 = grp.get("i2").value
-                self.dataClasses[-1].ifluo = grp.get("ifluo").value
+                self.dataClasses[-1].i0 = grp.get("i0")[()]
+                self.dataClasses[-1].i1 = grp.get("i1")[()]
+                self.dataClasses[-1].i2 = grp.get("i2")[()]
+                self.dataClasses[-1].ifluo = grp.get("ifluo")[()]
                 
                 
                 #Mju datasets
-                self.dataClasses[-1].mju = grp.get("mju").value
-                self.dataClasses[-1].mjuRebined = grp.get("mjuRebined").value
-                self.dataClasses[-1].mjuOriginal = grp.get("mjuOriginal").value
-                self.dataClasses[-1].mjuDerivative= grp.get("mjuDerivative").value
-                self.dataClasses[-1].victoreen = grp.get("victoreen").value
-                self.dataClasses[-1].mjuMinusVictoreen = grp.get("mjuMinusVictoreen").value
-                self.dataClasses[-1].mju0 = grp.get("mju0").value
+                self.dataClasses[-1].mju = grp.get("mju")[()]
+                self.dataClasses[-1].mjuRebined = grp.get("mjuRebined")[()]
+                self.dataClasses[-1].mjuOriginal = grp.get("mjuOriginal")[()]
+                self.dataClasses[-1].mjuDerivative= grp.get("mjuDerivative")[()]
+                self.dataClasses[-1].victoreen = grp.get("victoreen")[()]
+                self.dataClasses[-1].mjuMinusVictoreen = grp.get("mjuMinusVictoreen")[()]
+                self.dataClasses[-1].mju0 = grp.get("mju0")[()]
                 try:
-                    self.dataClasses[-1].mjuRef = grp.get("mjuRef").value
+                    self.dataClasses[-1].mjuRef = grp.get("mjuRef")[()]
                 except:
                     pass
                 
                 #EXAFS datasets
-                self.dataClasses[-1].k = grp.get("k").value
-                self.dataClasses[-1].exafs = grp.get("exafs").value
-                self.dataClasses[-1].exafsZeroLine = grp.get("exafsZeroLine").value
-                self.dataClasses[-1].exafsZLC = grp.get("exafsZLC").value
+                self.dataClasses[-1].k = grp.get("k")[()]
+                self.dataClasses[-1].exafs = grp.get("exafs")[()]
+                self.dataClasses[-1].exafsZeroLine = grp.get("exafsZeroLine")[()]
+                self.dataClasses[-1].exafsZLC = grp.get("exafsZLC")[()]
                 
                 # FT datasets
-                self.dataClasses[-1].window = grp.get("window").value
-                self.dataClasses[-1].exafsTimesWindow = grp.get("exafsTimesWindow").value
-                self.dataClasses[-1].exafsZLCTimesWindow = grp.get("exafsZLCTimesWindow").value
-                self.dataClasses[-1].r = grp.get("r").value
-                self.dataClasses[-1].fr = grp.get("fr").value
-                self.dataClasses[-1].fi = grp.get("fi").value        
-                self.dataClasses[-1].efr = grp.get("efr").value
-                self.dataClasses[-1].efi = grp.get("efi").value
+                self.dataClasses[-1].window = grp.get("window")[()]
+                self.dataClasses[-1].exafsTimesWindow = grp.get("exafsTimesWindow")[()]
+                self.dataClasses[-1].exafsZLCTimesWindow = grp.get("exafsZLCTimesWindow")[()]
+                self.dataClasses[-1].r = grp.get("r")[()]
+                self.dataClasses[-1].fr = grp.get("fr")[()]
+                self.dataClasses[-1].fi = grp.get("fi")[()]        
+                self.dataClasses[-1].efr = grp.get("efr")[()]
+                self.dataClasses[-1].efi = grp.get("efi")[()]
                 
-                self.dataClasses[-1].rZLC = grp.get("rZLC").value
-                self.dataClasses[-1].frZLC = grp.get("frZLC").value
-                self.dataClasses[-1].fiZLC = grp.get("fiZLC").value       
-                self.dataClasses[-1].efrZLC = grp.get("efrZLC").value
-                self.dataClasses[-1].efiZLC = grp.get("efiZLC").value
+                self.dataClasses[-1].rZLC = grp.get("rZLC")[()]
+                self.dataClasses[-1].frZLC = grp.get("frZLC")[()]
+                self.dataClasses[-1].fiZLC = grp.get("fiZLC")[()]      
+                self.dataClasses[-1].efrZLC = grp.get("efrZLC")[()]
+                self.dataClasses[-1].efiZLC = grp.get("efiZLC")[()]
                 
                 # BFT datasets
-                self.dataClasses[-1].bftWindow = grp.get("bftWindow").value
-                self.dataClasses[-1].bftk = grp.get("bftk").value
-                self.dataClasses[-1].bftefr = grp.get("bftefr").value
-                self.dataClasses[-1].bftefi = grp.get("bftefi").value
-                self.dataClasses[-1].bftAmp = grp.get("bftAmp").value
-                self.dataClasses[-1].bftPha = grp.get("bftPha").value
-                self.dataClasses[-1].bftEXAFS = grp.get("bftEXAFS").value
-                self.dataClasses[-1].bftefrWindow = grp.get("bftefrWindow").value
-                self.dataClasses[-1].bftefiWindow = grp.get("bftefiWindow").value    
+                self.dataClasses[-1].bftWindow = grp.get("bftWindow")[()]
+                self.dataClasses[-1].bftk = grp.get("bftk")[()]
+                self.dataClasses[-1].bftefr = grp.get("bftefr")[()]
+                self.dataClasses[-1].bftefi = grp.get("bftefi")[()]
+                self.dataClasses[-1].bftAmp = grp.get("bftAmp")[()]
+                self.dataClasses[-1].bftPha = grp.get("bftPha")[()]
+                self.dataClasses[-1].bftEXAFS = grp.get("bftEXAFS")[()]
+                self.dataClasses[-1].bftefrWindow = grp.get("bftefrWindow")[()]
+                self.dataClasses[-1].bftefiWindow = grp.get("bftefiWindow")[()]   
                 
                 #Rebin parameters
-                self.dataClasses[-1].dE1 = grp.get("dE1").value
-                self.dataClasses[-1].dE2 = grp.get("dE2").value
-                self.dataClasses[-1].dE3 = grp.get("dE3").value
+                self.dataClasses[-1].dE1 = grp.get("dE1")[()]
+                self.dataClasses[-1].dE2 = grp.get("dE2")[()]
+                self.dataClasses[-1].dE3 = grp.get("dE3")[()]
                 
                 
                 #extraction params
-                self.dataClasses[-1].E0 = grp.get("E0").value
-                self.dataClasses[-1].E1 = grp.get("E1").value
-                self.dataClasses[-1].E2 = grp.get("E2").value
-                self.dataClasses[-1].E3 = grp.get("E3").value
+                self.dataClasses[-1].E0 = grp.get("E0")[()]
+                self.dataClasses[-1].E1 = grp.get("E1")[()]
+                self.dataClasses[-1].E2 = grp.get("E2")[()]
+                self.dataClasses[-1].E3 = grp.get("E3")[()]
                 try:
-                    self.dataClasses[-1].Es = grp.get("Es").value
+                    self.dataClasses[-1].Es = grp.get("Es")[()]
                 except:
                     self.dataClasses[-1].Es = self.dataClasses[-1].E1 - 100
 
                 try:
-                    self.dataClasses[-1].energyShift = grp.get("energyShift").value
+                    self.dataClasses[-1].energyShift = grp.get("energyShift")[()]
                 except:
                     pass
                 
-                self.dataClasses[-1].kPower = grp.get("kPower").value
+                self.dataClasses[-1].kPower = grp.get("kPower")[()]
                 
-                self.dataClasses[-1].zeroLineCorr = grp.get("zeroLineCorr").value
+                self.dataClasses[-1].zeroLineCorr = grp.get("zeroLineCorr")[()]
                 
-                self.dataClasses[-1].mju0PolinomialDegree = grp.get("mju0PolinomialDegree").value
+                self.dataClasses[-1].mju0PolinomialDegree = grp.get("mju0PolinomialDegree")[()]
                 
-                self.dataClasses[-1].normalizationMode = grp.get("normalizationMode").value #0 for mju0 normalization, 1 for value normalization at given energy
-                self.dataClasses[-1].normalizationEnergy = grp.get("normalizationEnergy").value
+                self.dataClasses[-1].normalizationMode = grp.get("normalizationMode")[()] #0 for mju0 normalization, 1 for value normalization at given energy
+                self.dataClasses[-1].normalizationEnergy = grp.get("normalizationEnergy")[()]
                 
                 #FT params
-                self.dataClasses[-1].kMin = grp.get("kMin").value
-                self.dataClasses[-1].kMax = grp.get("kMax").value
-                self.dataClasses[-1].dk = grp.get("dk").value
-                self.dataClasses[-1].rMin = grp.get("rMin").value
-                self.dataClasses[-1].rMax = grp.get("rMax").value
-                self.dataClasses[-1].dr = grp.get("dr").value
+                self.dataClasses[-1].kMin = grp.get("kMin")[()]
+                self.dataClasses[-1].kMax = grp.get("kMax")[()]
+                self.dataClasses[-1].dk = grp.get("dk")[()]
+                self.dataClasses[-1].rMin = grp.get("rMin")[()]
+                self.dataClasses[-1].rMax = grp.get("rMax")[()]
+                self.dataClasses[-1].dr = grp.get("dr")[()]
                 
                 #BFT params
-                self.dataClasses[-1].rMinBft = grp.get("rMinBft").value
-                self.dataClasses[-1].rMaxBft = grp.get("rMaxBft").value
-                self.dataClasses[-1].bftWindowParam = grp.get("bftWindowParam").value       
+                self.dataClasses[-1].rMinBft = grp.get("rMinBft")[()]
+                self.dataClasses[-1].rMaxBft = grp.get("rMaxBft")[()]
+                self.dataClasses[-1].bftWindowParam = grp.get("bftWindowParam")[()]       
                 
                 # Deglitching params and result
                 
                 #fit params and results
                 
-                self.dataClasses[-1].fitKMin = grp.get("fitKMin").value
-                self.dataClasses[-1].fitKMax = grp.get("fitKMax").value
-                self.dataClasses[-1].fitdk = grp.get("fitdk").value
+                self.dataClasses[-1].fitKMin = grp.get("fitKMin")[()]
+                self.dataClasses[-1].fitKMax = grp.get("fitKMax")[()]
+                self.dataClasses[-1].fitdk = grp.get("fitdk")[()]
                 
-                self.dataClasses[-1].fitNShels = grp.get("fitNShels").value
+                self.dataClasses[-1].fitNShels = grp.get("fitNShels")[()]
                 
-                self.dataClasses[-1].fitParams = grp.get("fitParams").value
-                self.dataClasses[-1].fitAmps = grp.get("fitAmps").value
-                self.dataClasses[-1].fitPhas = grp.get("fitPhas").value
+                self.dataClasses[-1].fitParams = grp.get("fitParams")[()]
+                self.dataClasses[-1].fitAmps = grp.get("fitAmps")[()]
+                self.dataClasses[-1].fitPhas = grp.get("fitPhas")[()]
                 
-                self.dataClasses[-1].fitK = grp.get("fitK").value
-                self.dataClasses[-1].fitExafs = grp.get("fitExafs").value
+                self.dataClasses[-1].fitK = grp.get("fitK")[()]
+                self.dataClasses[-1].fitExafs = grp.get("fitExafs")[()]
                 
                 #rdf params and results
                 
-                self.dataClasses[-1].isRdfed = grp.get("isRdfed").value
+                self.dataClasses[-1].isRdfed = grp.get("isRdfed")[()]
                 
-                self.dataClasses[-1].rdfKMin = grp.get("rdfKMin").value
-                self.dataClasses[-1].rdfKMax = grp.get("rdfKMax").value
-                self.dataClasses[-1].rdfdk = grp.get("rdfdk").value
+                self.dataClasses[-1].rdfKMin = grp.get("rdfKMin")[()]
+                self.dataClasses[-1].rdfKMax = grp.get("rdfKMax")[()]
+                self.dataClasses[-1].rdfdk = grp.get("rdfdk")[()]
                 
-                self.dataClasses[-1].rdfRMin = grp.get("rdfRMin").value
-                self.dataClasses[-1].rdfRMax =grp.get("rdfRMax").value
-                self.dataClasses[-1].rdfdr = grp.get("rdfdr").value
+                self.dataClasses[-1].rdfRMin = grp.get("rdfRMin")[()]
+                self.dataClasses[-1].rdfRMax =grp.get("rdfRMax")[()]
+                self.dataClasses[-1].rdfdr = grp.get("rdfdr")[()]
                 
-                self.dataClasses[-1].rdfMaxIterations = grp.get("rdfMaxIterations").value
+                self.dataClasses[-1].rdfMaxIterations = grp.get("rdfMaxIterations")[()]
                 
-                self.dataClasses[-1].rdfAmpK = grp.get("rdfAmpK").value
-                self.dataClasses[-1].rdfAmp = grp.get("rdfAmp").value
-                self.dataClasses[-1].rdfPhaK = grp.get("rdfPhaK").value
-                self.dataClasses[-1].rdfPha = grp.get("rdfPha").value
+                self.dataClasses[-1].rdfAmpK = grp.get("rdfAmpK")[()]
+                self.dataClasses[-1].rdfAmp = grp.get("rdfAmp")[()]
+                self.dataClasses[-1].rdfPhaK = grp.get("rdfPhaK")[()]
+                self.dataClasses[-1].rdfPha = grp.get("rdfPha")[()]
                 
-                self.dataClasses[-1].rdfAmpFile = grp.get("rdfAmpFile").value
-                self.dataClasses[-1].rdfPhaFile = grp.get("rdfPhaFile").value
+                self.dataClasses[-1].rdfAmpFile = grp.get("rdfAmpFile")[()]
+                self.dataClasses[-1].rdfPhaFile = grp.get("rdfPhaFile")[()]
                 
-                self.dataClasses[-1].rdfK = grp.get("rdfK").value
-                self.dataClasses[-1].rdfExafs = grp.get("rdfExafs").value
+                self.dataClasses[-1].rdfK = grp.get("rdfK")[()]
+                self.dataClasses[-1].rdfExafs = grp.get("rdfExafs")[()]
                 
-                self.dataClasses[-1].rdfR = grp.get("rdfR").value
-                self.dataClasses[-1].rdf = grp.get("rdf").value
+                self.dataClasses[-1].rdfR = grp.get("rdfR")[()]
+                self.dataClasses[-1].rdf = grp.get("rdf")[()]
                 
                 sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
                 
-                if grp.get("raw_data_type").value == 3:
+                if grp.get("raw_data_type")[()] == 3:
                     sel_item.setForeground(QtCore.Qt.blue)
                 else:
                     sel_item.setForeground(QtCore.Qt.darkGreen)
@@ -2374,28 +2374,28 @@ class MyWindow(QtGui.QMainWindow):
             
             if classType == 10: #XES
                 self.dataClasses.append(xaesa_xes_class())
-                self.dataClasses[-1].name = grp.get("name").value
-                self.dataClasses[-1].energy = grp.get("energy").value
-                self.dataClasses[-1].energyRebined = grp.get("energyRebined").value
-                self.dataClasses[-1].energyOriginal = grp.get("energyOriginal").value
+                self.dataClasses[-1].name = str(grp.get("name")[()])
+                self.dataClasses[-1].energy = grp.get("energy")[()]
+                self.dataClasses[-1].energyRebined = grp.get("energyRebined")[()]
+                self.dataClasses[-1].energyOriginal = grp.get("energyOriginal")[()]
                 
-                self.dataClasses[-1].xes = grp.get("xes").value
-                self.dataClasses[-1].xesBackground = grp.get("xesBackground").value
-                self.dataClasses[-1].xesBkgrCorrected = grp.get("xesBkgrCorrected").value
-                self.dataClasses[-1].xesAreaNorm = grp.get("xesAreaNorm").value
-                self.dataClasses[-1].xesMaxNorm = grp.get("xesMaxNorm").value
-                self.dataClasses[-1].xesRebinned = grp.get("xesRebinned").value
-                self.dataClasses[-1].xesOriginal = grp.get("xesOriginal").value
+                self.dataClasses[-1].xes = grp.get("xes")[()]
+                self.dataClasses[-1].xesBackground = grp.get("xesBackground")[()]
+                self.dataClasses[-1].xesBkgrCorrected = grp.get("xesBkgrCorrected")[()]
+                self.dataClasses[-1].xesAreaNorm = grp.get("xesAreaNorm")[()]
+                self.dataClasses[-1].xesMaxNorm = grp.get("xesMaxNorm")[()]
+                self.dataClasses[-1].xesRebinned = grp.get("xesRebinned")[()]
+                self.dataClasses[-1].xesOriginal = grp.get("xesOriginal")[()]
                 
-                self.dataClasses[-1].E0 = grp.get("E0").value
-                self.dataClasses[-1].E1 = grp.get("E1").value
-                self.dataClasses[-1].E2 = grp.get("E2").value
-                self.dataClasses[-1].E3 = grp.get("E3").value
-                self.dataClasses[-1].eAreaNormMin = grp.get("eAreaNormMin").value
-                self.dataClasses[-1].eAreaNormMax = grp.get("eAreaNormMax").value
+                self.dataClasses[-1].E0 = grp.get("E0")[()]
+                self.dataClasses[-1].E1 = grp.get("E1")[()]
+                self.dataClasses[-1].E2 = grp.get("E2")[()]
+                self.dataClasses[-1].E3 = grp.get("E3")[()]
+                self.dataClasses[-1].eAreaNormMin = grp.get("eAreaNormMin")[()]
+                self.dataClasses[-1].eAreaNormMax = grp.get("eAreaNormMax")[()]
                 
                 try:
-                    self.dataClasses[-1].incidentEnergy = grp.get("incidentEnergy").value
+                    self.dataClasses[-1].incidentEnergy = grp.get("incidentEnergy")[()]
                 except:
                     self.dataClasses[-1].incidentEnergy = 0
                     
@@ -2405,15 +2405,15 @@ class MyWindow(QtGui.QMainWindow):
         ##################### OPEN TRANSIENT        
             if classType == 20: #TRANSIENT
                 self.dataClasses.append(xaesa_transient_class())
-                self.dataClasses[-1].name = grp.get("name").value
-                self.dataClasses[-1].energy = grp.get("energy").value
-                self.dataClasses[-1].energySmooth = grp.get("energySmooth").value
-                self.dataClasses[-1].transient = grp.get("transient").value
-                self.dataClasses[-1].transientSmooth = grp.get("transientSmooth").value
+                self.dataClasses[-1].name = str(grp.get("name")[()])
+                self.dataClasses[-1].energy = grp.get("energy")[()]
+                self.dataClasses[-1].energySmooth = grp.get("energySmooth")[()]
+                self.dataClasses[-1].transient = grp.get("transient")[()]
+                self.dataClasses[-1].transientSmooth = grp.get("transientSmooth")[()]
                 
-                self.dataClasses[-1].eSmoothMin = grp.get("eSmoothMin").value
-                self.dataClasses[-1].eSmoothMax = grp.get("eSmoothMax").value
-                self.dataClasses[-1].smoothFactor = grp.get("smoothFactor").value
+                self.dataClasses[-1].eSmoothMin = grp.get("eSmoothMin")[()]
+                self.dataClasses[-1].eSmoothMax = grp.get("eSmoothMax")[()]
+                self.dataClasses[-1].smoothFactor = grp.get("smoothFactor")[()]
                 
                 sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
                 sel_item.setForeground(QtCore.Qt.black)
