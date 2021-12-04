@@ -364,7 +364,7 @@ class xaesa_exafs_class():
         
 #        print(kScale, eScale)
 
-        a1 = arange(self.energy[0], self.E1, self.dE1, dtype='float64')
+        a1 = arange(self.Es, self.E1, self.dE1, dtype='float64')
         a2 = arange(self.E1, self.E0, self.dE2, dtype='float64')
 #        a3 = arange(self.E2, self.E3, self.dE3)
         self.energyRebined = concatenate((a1, a2, eScale.astype('float64')))
@@ -396,7 +396,7 @@ class xaesa_exafs_class():
         newMju = []
         
         #take data before E1
-        E1Region = where(  sortedEnergy < self.E1 )
+        E1Region = where(  logical_and(sortedEnergy > self.Es ,sortedEnergy < self.E1) )
         E1Energy = sortedEnergy[E1Region]
         E1Mju = sortedMju[E1Region]
         newE.append(E1Energy[0])
@@ -479,7 +479,7 @@ class xaesa_exafs_class():
         kScale = arange(kExafsMin, kExafsMax, dk, dtype='float64')
         eScale = kScale**2 * 10**20 / (1.602*10**-19 * (2*me/hbar**2)) + self.E0        
 
-        a1 = arange(self.energy[0], self.E1, self.dE1, dtype='float64')
+        a1 = arange(self.Es, self.E1, self.dE1, dtype='float64')
         a2 = arange(self.E1, self.E0+50, self.dE2, dtype='float64')        
         self.energyRebined = concatenate((a1, a2, eScale.astype('float64')))        
         

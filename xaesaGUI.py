@@ -2214,10 +2214,8 @@ class MyWindow(QtGui.QMainWindow):
             classType = grp.get("classType").value
             print("classType", classType)
         ##################### OPEN XAS    
-            if classType == 0: #XAS
-                
-                
-                
+            if classType == 0: #XAS       
+
                 self.dataClasses.append(xaesa_exafs_class(grp.get("raw_data_type").value))
                 self.dataClasses[-1].raw_data_type = grp.get("raw_data_type").value
                 self.dataClasses[-1].name = grp.get("name").value
@@ -3296,8 +3294,8 @@ class MyWindow(QtGui.QMainWindow):
         dk = self.xaesaSettings.rebinE0E3
             
         msgBox = QtGui.QMessageBox()
-        msgBox.setText("E1, E0+50, E3 energy values will be used for rebinning. \n\
-Step size is defined as:\n        %s eV for E < E1\n        %s eV for E1 < E < E2 \n        dk=%s A-1 for E2 < E < E3 \n\
+        msgBox.setText("Es, E1, E0+50, E3 energy values will be used for rebinning. \n\
+Step size is defined as:\n        %s eV for Es < E < E1\n        %s eV for E1 < E < E2 \n        dk=%s A-1 for E2 < E < E3 \n\
 Proceed ?" %(de1, de2, dk))
 #            msgBox.setInformativeText("Do you want to save your changes?")
         msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -3326,7 +3324,7 @@ Proceed ?" %(de1, de2, dk))
             
         msgBox = QtGui.QMessageBox()
         msgBox.setText("E1, E0+50, E3 energy values will be used for rebinning. \n\
-Step size is defined as:\n        %s eV for E < E1\n        %s eV for E1 < E < E2 \n        dk=%s A-1 for E2 < E < E3 \n\
+Step size is defined as:\n        %s eV for Es < E < E1\n        %s eV for E1 < E < E2 \n        dk=%s A-1 for E2 < E < E3 \n\
 Proceed ?" %(de1, de2, dk))
 #            msgBox.setInformativeText("Do you want to save your changes?")
         msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
