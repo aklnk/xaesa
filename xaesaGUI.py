@@ -25,6 +25,7 @@ from .xaesa_viewer import xaesa_viewer, xaesaViewerWindow
 from .xaesa_rxes import xaesa_rxes, xaesaRxesWindow
 
 import h5py
+import copy as c
 
 def show_exception_and_exit(exc_type, exc_value, tb):
     import traceback
@@ -214,7 +215,9 @@ class MyWindow(QtGui.QMainWindow):
         self.lstSpectraMenu.addAction("Compare FT", self.compareft)        
         self.lstSpectraMenu.addAction("Compare BFT", self.comparebft)
         self.lstSpectraMenu.addSeparator()  
-        self.lstSpectraMenu.addAction("Spectra difference", self.spectradifference)      
+        self.lstSpectraMenu.addAction("Spectra difference", self.spectradifference)   
+        self.lstSpectraMenu.addSeparator()  
+        self.lstSpectraMenu.addAction("Duplicate", self.duplicate)
 
         
         #open button
@@ -2218,7 +2221,7 @@ class MyWindow(QtGui.QMainWindow):
 
                 self.dataClasses.append(xaesa_exafs_class(grp.get("raw_data_type")[()]))
                 self.dataClasses[-1].raw_data_type = grp.get("raw_data_type")[()]
-                self.dataClasses[-1].name = str(grp.get("name")[()])
+                self.dataClasses[-1].name = grp.get("name")[()].decode('utf-8')
                 self.dataClasses[-1].energy = grp.get("energy")[()]
                 self.dataClasses[-1].energyRebined = grp.get("energyRebined")[()]
                 self.dataClasses[-1].energyOriginal = grp.get("energyOriginal")[()]
@@ -2374,7 +2377,7 @@ class MyWindow(QtGui.QMainWindow):
             
             if classType == 10: #XES
                 self.dataClasses.append(xaesa_xes_class())
-                self.dataClasses[-1].name = str(grp.get("name")[()])
+                self.dataClasses[-1].name = grp.get("name")[()].decode('utf-8')
                 self.dataClasses[-1].energy = grp.get("energy")[()]
                 self.dataClasses[-1].energyRebined = grp.get("energyRebined")[()]
                 self.dataClasses[-1].energyOriginal = grp.get("energyOriginal")[()]
@@ -2405,7 +2408,7 @@ class MyWindow(QtGui.QMainWindow):
         ##################### OPEN TRANSIENT        
             if classType == 20: #TRANSIENT
                 self.dataClasses.append(xaesa_transient_class())
-                self.dataClasses[-1].name = str(grp.get("name")[()])
+                self.dataClasses[-1].name = grp.get("name")[()].decode('utf-8')
                 self.dataClasses[-1].energy = grp.get("energy")[()]
                 self.dataClasses[-1].energySmooth = grp.get("energySmooth")[()]
                 self.dataClasses[-1].transient = grp.get("transient")[()]
@@ -3055,6 +3058,16 @@ class MyWindow(QtGui.QMainWindow):
         self.dataClasses[-1].bftWindowParam =  self.dataClasses[selectedRows[0]].bftWindowParam
         
         self.dataClasses[-1].processExpData()
+        
+    def duplicate(self):
+        selected_indexes = self.lstSpectra.selectedIndexes()
+        selectedRows = [x.row() for x in selected_indexes]
+        if len(selected_indexes) == 0:
+            return
+        for i in selectedRows:
+            self.lstSpectra.addItem(self.dataClasses[i].name + '_copy')
+            self.dataClasses.append(c.deepcopy(self.dataClasses[i]))   
+        
                             
     def averageExafs(self):
         selected_indexes = self.lstSpectra.selectedIndexes()
