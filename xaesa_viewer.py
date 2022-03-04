@@ -46,7 +46,7 @@ class xaesa_viewer(QtGui.QWidget):
     def initUI(self):
         #Figures 
         self.fig = plt.figure(1, figsize=(15, 6))
-        self.ax_exafs = self.fig.add_subplot(111)
+        # self.ax_exafs = self.fig.add_subplot(111)
 
         self.canv = FigureCanvas(self.fig)
         self.tbar = NavigationToolbar(self.canv, self)
@@ -57,14 +57,9 @@ class xaesa_viewer(QtGui.QWidget):
         
 #        plt.tight_layout()    
         
-        self.btnCancel = QtGui.QPushButton('Exit')
-        self.btnCancel.clicked.connect(self.cancel)
-        
         lfig = QtGui.QVBoxLayout()
         lfig.addWidget(self.tbar)
         lfig.addWidget(self.canv)
-        
-        lfig.addWidget(self.btnCancel)
               
         self.setLayout(lfig)
         
@@ -72,7 +67,7 @@ class xaesa_viewer(QtGui.QWidget):
         
     def plot(self):
         
-        self.ax_exafs.clear()
+        plt.clf()
         self.ax_exafs = self.fig.add_subplot(111)
         
         
@@ -129,9 +124,7 @@ class xaesa_viewer(QtGui.QWidget):
         self.canv.draw()
 
         
-    def cancel(self):
-        #do whatever you need with self.roiGroups    
-        self.close()
+
         
     def onpick(self, event):
         # on the pick event, find the orig line corresponding to the
@@ -151,10 +144,6 @@ class xaesa_viewer(QtGui.QWidget):
         else:
             legline.set_alpha(0.2)
         self.fig.canvas.draw()
-        
-    def cancel(self):
-        #do whatever you need with self.roiGroups    
-        self.close()
    
 
 class xaesaViewerWindow(QtGui.QDialog):
@@ -162,8 +151,13 @@ class xaesaViewerWindow(QtGui.QDialog):
         super(xaesaViewerWindow, self).__init__()  
         
         self.viewer = xaesa_viewer(self)
+        
+        self.btnCancel = QtGui.QPushButton('Exit')
+        self.btnCancel.clicked.connect(self.cancel)
+        
         lout = QtGui.QGridLayout()
         lout.addWidget(self.viewer)
+        lout.addWidget(self.btnCancel)
         self.setLayout(lout)
 #        self.setCentralWidget(self.wid) 
 
@@ -171,6 +165,10 @@ class xaesaViewerWindow(QtGui.QDialog):
         
     def closeEvent(self, event):
         super(xaesaViewerWindow, self).closeEvent(event)    
+        
+    def cancel(self):
+        #do whatever you need with self.roiGroups    
+        self.close()
 #        
 #if __name__ == '__main__':
 #    app = QtGui.QApplication(argv)

@@ -8,7 +8,8 @@ import sys
 import os
 from numpy import   arange, argmin, argmax, asarray, concatenate, copy, delete, \
                     gradient, log, logical_and, multiply, newaxis, pi, power, \
-                    sin, cos, sqrt, sum, where, zeros, unique, ones, convolve, isnan
+                    sin, cos, sqrt, sum, where, zeros, unique, ones, convolve, \
+                    isnan, polyfit, polyval
 
 from scipy.optimize import curve_fit
 from scipy.interpolate import Rbf, InterpolatedUnivariateSpline, UnivariateSpline
@@ -105,6 +106,7 @@ class xaesa_exafs_class():
         self.zeroLineCorr = 0
         
         self.mju0PolinomialDegree = 4
+        self.bckgrPolinomialDegree = -1
         
         self.normalizationMode = 0 #0 for mju0 normalization, 1 for value normalization at given energy
         self.normalizationEnergy = 0
@@ -206,7 +208,7 @@ class xaesa_exafs_class():
         
         print("max deriv at ", energyMaxDerivValue)
 
-        self.E0 = self.energy[maxderiv] + 5.5
+        self.E0 = self.energy[maxderiv] + 0.001
         self.E1 = self.energy[maxderiv] - (energyMaxDerivValue - self.energy[0])/5
         self.E2 = self.energy[maxderiv] + (self.energy[-1] - energyMaxDerivValue )/5
         self.E3 = self.energy[-1]
@@ -220,8 +222,6 @@ class xaesa_exafs_class():
             energyStart = self.energy[0]
         else:
             energyStart = self.Es
-        # if energyStart < self.E1-300: #needed if there is another edge before
-        #     energyStart = self.E1-300
           
         whereE1 = where( logical_and(self.energy > energyStart, self.energy < self.E1) )
     
@@ -231,6 +231,23 @@ class xaesa_exafs_class():
         popt, pcov = curve_fit(victoreen, Xb, yb)
 
         self.victoreen = victoreen(self.energy, popt[0], popt[1])
+        self.mjuMinusVictoreen = self.mju - self.victoreen
+        
+    def removeBackgroundPoly(self):
+
+        if self.Es == 0:
+            energyStart = self.energy[0]
+        else:
+            energyStart = self.Es
+          
+        whereE1 = where( logical_and(self.energy > energyStart, self.energy < self.E1) )
+    
+        Xb = self.energy[whereE1]
+        yb = self.mju[whereE1]
+        
+        p = polyfit(Xb, yb, self.bckgrPolinomialDegree)
+
+        self.victoreen = polyval(p,self.energy)
         self.mjuMinusVictoreen = self.mju - self.victoreen
         
     def findMju0(self):
@@ -344,41 +361,6 @@ class xaesa_exafs_class():
 
         self.bftEXAFS = self.bftAmp * sin(self.bftPha)
         
-    def changeToRebinedMju(self):
-        self.energyOriginal = copy(self.energy)
-        self.mjuOriginal = copy(self.mju)
-        
-        # sort array in there are decreasing points
-        sortIndexes = self.energy.argsort()
-        sortedEnergy = self.energy[sortIndexes]
-        sortedMju = self.mju[sortIndexes]
-        uniqueEnergy, uniqueIndexes = unique(sortedEnergy, return_index=True)
-    
-        spl = InterpolatedUnivariateSpline(uniqueEnergy, sortedMju[uniqueIndexes]) 
-        
-        kExafsMin = sqrt(  (2*me/hbar**2) * (self.E0-self.E0) * 1.602*10**-19  ) *10**-10
-        kExafsMax = sqrt(  (2*me/hbar**2) * (self.E3-self.E0) * 1.602*10**-19  ) *10**-10
-        
-        kScale = arange(kExafsMin, kExafsMax, 0.025, dtype='float64')
-        eScale = kScale**2 * 10**20 / (1.602*10**-19 * (2*me/hbar**2)) + self.E0
-        
-#        print(kScale, eScale)
-
-        a1 = arange(self.Es, self.E1, self.dE1, dtype='float64')
-        a2 = arange(self.E1, self.E0, self.dE2, dtype='float64')
-#        a3 = arange(self.E2, self.E3, self.dE3)
-        self.energyRebined = concatenate((a1, a2, eScale.astype('float64')))
-        
-        print(self.energyRebined)
-        
-        self.mjuRebined = spl(self.energyRebined)
-        
-        self.energy = copy(self.energyRebined)
-        self.mju = copy(self.mjuRebined)
-        self.mjuDerivative = gradient(self.mju)
-        
-        self.redoExtraction()
-        
     def changeToRebinedMjuAveraging(self, rebinType = 'spline', dE1 = 1, dE2 = 0.1, dK = 0.01, s = 0):
         # rebinType possible values:
         #    'spline'
@@ -479,8 +461,8 @@ class xaesa_exafs_class():
         kScale = arange(kExafsMin, kExafsMax, dk, dtype='float64')
         eScale = kScale**2 * 10**20 / (1.602*10**-19 * (2*me/hbar**2)) + self.E0        
 
-        a1 = arange(self.Es, self.E1, self.dE1, dtype='float64')
-        a2 = arange(self.E1, self.E0+50, self.dE2, dtype='float64')        
+        a1 = arange(self.Es, self.E1, dE1, dtype='float64')
+        a2 = arange(self.E1, self.E0+50, dE2, dtype='float64')        
         self.energyRebined = concatenate((a1, a2, eScale.astype('float64')))        
         
         if rebinType == 'spline':
@@ -516,23 +498,6 @@ class xaesa_exafs_class():
         
         self.redoExtraction()
 
-        
-    def changeToRebinedMjuRbfSmooth(self):
-        try:
-            spl = Rbf( self.energy, self.mju, 
-                       function = 'multiquadric', 
-                       epsilon = 3, #epsilon 3 woks fine
-                       smooth = 1 )
-        except:
-            print("rbf error")
-        self.mjuRebined = spl(self.energy)
-        self.energyRebined = self.energy
-        
-        self.energy = copy(self.energyRebined)
-        self.mju = copy(self.mjuRebined)
-        self.mjuDerivative = gradient(self.mju)
-      
-        self.redoExtraction()
         
     def changeToRebinedMjuAveraging1(self):
         self.energyOriginal = copy(self.energy)
@@ -697,7 +662,10 @@ class xaesa_exafs_class():
         
     def redoExtraction(self):
         if self.raw_data_type in [0,1,2]: # 2 for Mju
-            self.removeBackground()
+            if self.bckgrPolinomialDegree == -1: #use vectoreen
+                self.removeBackground()
+            if self.bckgrPolinomialDegree >=0 and self.bckgrPolinomialDegree <9:
+                self.removeBackgroundPoly()
             self.findMju0()
             self.calculateEXAFS()
             self.calculateEXAFSZLC()

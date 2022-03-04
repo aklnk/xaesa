@@ -17,7 +17,7 @@ class xaesa_settings(QtGui.QWidget):
     def __init__(self, parent=None):
         super(xaesa_settings, self).__init__()
         
-        self.rebinSmoothing = 1
+        # self.rebinSmoothing = 1
         self.rebinE1 = 5
         self.rebinE1E0 = 0.1
         self.rebinE0E3 = 0.02
@@ -30,8 +30,8 @@ class xaesa_settings(QtGui.QWidget):
         #################  Rebin group ###################################
         grpRebin = QtGui.QGroupBox("Rebin parameters")
         
-        self.lblRebinSmoothing = QtGui.QLabel("Rebin smoothing factor")
-        self.edtRebinSmoothing = QtGui.QLineEdit(str(self.rebinSmoothing))
+        # self.lblRebinSmoothing = QtGui.QLabel("Rebin smoothing factor")
+        # self.edtRebinSmoothing = QtGui.QLineEdit(str(self.rebinSmoothing))
         self.lblrebinE1 = QtGui.QLabel("Rebin dE (E < E1)")
         self.edtrebinE1 = QtGui.QLineEdit(str(self.rebinE1))
         self.lblrebinE1E0 = QtGui.QLabel("Rebin dE (E1 < E < E0+50)")
@@ -39,14 +39,14 @@ class xaesa_settings(QtGui.QWidget):
         self.lblrebinE0E3 = QtGui.QLabel("Rebin dk (E0+50 < E < E3)")
         self.edtrebinE0E3 = QtGui.QLineEdit(str(self.rebinE0E3))
         loutRebin = QtGui.QGridLayout()
-        loutRebin.addWidget(self.lblRebinSmoothing, 0, 0)
-        loutRebin.addWidget(self.edtRebinSmoothing, 0, 1) 
-        loutRebin.addWidget(self.lblrebinE1,        1, 0)
-        loutRebin.addWidget(self.edtrebinE1,        1, 1) 
-        loutRebin.addWidget(self.lblrebinE1E0,      2, 0)
-        loutRebin.addWidget(self.edtrebinE1E0,      2, 1) 
-        loutRebin.addWidget(self.lblrebinE0E3,      3, 0)
-        loutRebin.addWidget(self.edtrebinE0E3,      3, 1) 
+        # loutRebin.addWidget(self.lblRebinSmoothing, 0, 0)
+        # loutRebin.addWidget(self.edtRebinSmoothing, 0, 1) 
+        loutRebin.addWidget(self.lblrebinE1,        0, 0)
+        loutRebin.addWidget(self.edtrebinE1,        0, 1) 
+        loutRebin.addWidget(self.lblrebinE1E0,      1, 0)
+        loutRebin.addWidget(self.edtrebinE1E0,      1, 1) 
+        loutRebin.addWidget(self.lblrebinE0E3,      2, 0)
+        loutRebin.addWidget(self.edtrebinE0E3,      2, 1) 
         grpRebin.setLayout(loutRebin)
         
         ################ Apply button ###############
@@ -62,7 +62,7 @@ class xaesa_settings(QtGui.QWidget):
         self.setLayout(loutMain)
         
     def apply(self):
-        self.rebinSmoothing = float(self.edtRebinSmoothing.text())
+        # self.rebinSmoothing = float(self.edtRebinSmoothing.text())
         self.rebinE1 = float(self.edtrebinE1.text())
         self.rebinE1E0 = float(self.edtrebinE1E0.text())
         self.rebinE0E3 = float(self.edtrebinE0E3.text())

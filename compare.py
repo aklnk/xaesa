@@ -63,12 +63,16 @@ class CompareWindow(QtGui.QDialog):
         
         #Figures 
         self.fig = plt.figure(1, figsize=(15, 6))
-        self.ax_exafs = self.fig.add_subplot(111)
+        # self.ax_exafs = self.fig.add_subplot(111)
 
         self.canv = FigureCanvas(self.fig)
         self.tbar = NavigationToolbar(self.canv, self)
         
-#        plt.tight_layout()    
+        fnt = self.tbar.font()
+        fnt.setPointSize(20)
+        self.tbar.setFont(fnt)
+        
+        # plt.tight_layout()    
         
         self.btnCancel = QtGui.QPushButton('Exit')
         self.btnCancel.clicked.connect(self.cancel)
@@ -87,21 +91,23 @@ class CompareWindow(QtGui.QDialog):
         
     def plot(self):
         
-        self.ax_exafs.clear()
+        # self.ax_exafs.clear()
+        plt.clf()
         self.ax_exafs = self.fig.add_subplot(111)
+        
         
         
         if self.mode == 0: #compare exafs        
             for i in range(len(self.k)):
-                l, = self.ax_exafs.plot(self.k[i], self.exafs[i], label = self.labels[i])
+                l, = self.ax_exafs.plot(self.k[i], self.exafs[i], label = self.labels[i], linewidth=1)
                 self.ax_exafs.set_xlabel('Wavevector k, $\AA^{-1}$')
                 self.ax_exafs.set_ylabel('EXAFS, $\AA^{-2}$')
                 self.lines.append(l)
                 
         if self.mode == 1: #compare ft       
             for i in range(len(self.r)):
-                line1,  = self.ax_exafs.plot(self.r[i], self.fr[i], label = self.labels[i])
-                line2,  = self.ax_exafs.plot(self.r[i], self.fi[i])
+                line1,  = self.ax_exafs.plot(self.r[i], self.fr[i], label = self.labels[i], linewidth=1)
+                line2,  = self.ax_exafs.plot(self.r[i], self.fi[i], linewidth=1)
                 line2.set_color(line1.get_color())
                 line2.set_linestyle('dotted')
                 self.ax_exafs.set_xlabel('Distance R, $\AA$')
@@ -112,14 +118,14 @@ class CompareWindow(QtGui.QDialog):
                 
         if self.mode == 2: #compare bft       
             for i in range(len(self.bftk)):
-                l, = self.ax_exafs.plot(self.bftk[i], self.bftexafs[i], label = self.labels[i])
+                l, = self.ax_exafs.plot(self.bftk[i], self.bftexafs[i], label = self.labels[i], linewidth=1)
                 self.ax_exafs.set_xlabel('Wavevector k, $\AA^{-1}$')
                 self.ax_exafs.set_ylabel('EXAFS, $\AA^{-2}$')
                 self.lines.append(l)
                 
         if self.mode == 3: #compare mju      
             for i in range(len(self.energy)):
-                l, = self.ax_exafs.plot(self.energy[i], self.mju[i], label = self.labels[i])
+                l, = self.ax_exafs.plot(self.energy[i], self.mju[i], label = self.labels[i], linewidth=1)
                 self.ax_exafs.set_xlabel('Energy, eV')
                 self.ax_exafs.set_ylabel('Absorption, a.u.')
                 self.lines.append(l)
@@ -127,7 +133,7 @@ class CompareWindow(QtGui.QDialog):
                 
         if self.mode == 4: #compare xanes     
             for i in range(len(self.energy)):
-                l, = self.ax_exafs.plot(self.energy[i], self.mju[i], label = self.labels[i])
+                l, = self.ax_exafs.plot(self.energy[i], self.mju[i], label = self.labels[i], linewidth=1)
                 self.ax_exafs.set_xlabel('Energy, eV')
                 self.ax_exafs.set_ylabel('Absorption, a.u.')
                 self.ax_exafs.axhline(y=1, linewidth=0.5, color = 'k', linestyle='--',)
@@ -136,14 +142,14 @@ class CompareWindow(QtGui.QDialog):
                 
         if self.mode == 10: # XES original     
             for i in range(len(self.energy)):
-                l, = self.ax_exafs.plot(self.energy[i], self.xes[i], label = self.labels[i])
+                l, = self.ax_exafs.plot(self.energy[i], self.xes[i], label = self.labels[i], linewidth=1)
                 self.ax_exafs.set_xlabel('Energy, eV')
                 self.ax_exafs.set_ylabel('Intensity, a.u.')
                 self.lines.append(l)
                 
         if self.mode == 11: # XES area normalized
             for i in range(len(self.energy)):
-                l, = self.ax_exafs.plot(self.energy[i], self.xes[i], label = self.labels[i])
+                l, = self.ax_exafs.plot(self.energy[i], self.xes[i], label = self.labels[i], linewidth=1)
                 self.ax_exafs.set_xlabel('Energy, eV')
                 self.ax_exafs.set_ylabel('Area normalized intensity')
                 self.lines.append(l)
@@ -174,7 +180,7 @@ class CompareWindow(QtGui.QDialog):
 
         
     def cancel(self):
-        #do whatever you need with self.roiGroups    
+        #do whatever you need with self.roiGroups  
         self.close()
         
     def onpick(self, event):
