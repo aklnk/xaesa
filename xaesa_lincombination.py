@@ -40,8 +40,8 @@ from scipy.optimize import least_squares
 
 def lin_comb_func(x, basis, fit):
     
-#    print(basis * x[:,None])
-#    print(np.sum(basis * x[:,None], axis=0))
+    # print(basis * x[:,None])
+    # print('sum', (np.sum(basis * x[:,None], axis=0)))
     
     return np.sum(basis * x[:,None], axis=0) - fit
 
@@ -255,7 +255,7 @@ class LCWindow(QtGui.QDialog):
                 fit = self.mainform.dataClasses[y].exafsZLC
             if self.mju_exafs == 0:
                 fit = self.mainform.dataClasses[y].mjuMinusVictoreen
-        
+
 #        lin_comb_func(np.array([1,1]), np.array(basis), np.array(fit))    
             lsq_result = least_squares(lin_comb_func, np.array(variables), \
 #                                   method = 'dogbox',
