@@ -5,7 +5,7 @@
 #@author: sasha
 #"""
 
-XAESA_VERSION = "0.05"
+XAESA_VERSION = "0.06"
 GUI_SETTINGS_ID = "XAESA" + XAESA_VERSION
 
 import sys
@@ -59,7 +59,7 @@ if QTVer == 5:
 
 from numpy import asarray, fromstring, genfromtxt, gradient, argmax, zeros, sqrt, sin, transpose, \
                     array, savetxt, copy, delete, arange, exp, argmin, concatenate, all, diff,  \
-                    append, where, absolute, logical_and, reshape, max, min, average
+                    append, where, absolute, logical_and, reshape, max, min, average, sum
 
 #from .ft import FT, BFTWindow, BFT, GETPHASE
 
@@ -230,9 +230,9 @@ class MyWindow(QtGui.QMainWindow):
         self.lblDataX = QtGui.QLabel("Energy")
         self.lblDataY = QtGui.QLabel("mu")
         self.lblDataY1 = QtGui.QLabel("mu ref")
-        self.lblI0Col = QtGui.QLabel("I0 column")
-        self.lblI1Col = QtGui.QLabel("I1 column")
-        self.lblI2Col = QtGui.QLabel("I2 column")
+        self.lblI0Col = QtGui.QLabel("I0")
+        self.lblI1Col = QtGui.QLabel("I1")
+        self.lblI2Col = QtGui.QLabel("I2")
 #        self.lblFluoCols = QtGui.QLabel("Fluo columns")
         
         self.edtSkipLines = QtGui.QLineEdit(str(self.skiplines))
@@ -245,22 +245,26 @@ class MyWindow(QtGui.QMainWindow):
         self.edtFluoCols = QtGui.QLineEdit("11 12 13 15 16 17")
         self.edtFluoCols.hide()
         
+        self.edtSkipLines.setFixedWidth(50)
+        self.edtSkipLines.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
-        
-        self.edtEnergyCol.setFixedWidth(30)
+        self.edtEnergyCol.setFixedWidth(50)
         self.edtEnergyCol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
-        self.edtExafsCol.setFixedWidth(30)
+        self.edtExafsCol.setFixedWidth(50)
         self.edtExafsCol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
 
-        self.edtRefCol.setFixedWidth(30)
+        self.edtRefCol.setFixedWidth(50)
         self.edtRefCol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
-        self.edtI0Col.setFixedWidth(30)
+        self.edtI0Col.setFixedWidth(50)
         self.edtI0Col.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
-#        self.edtI1Col.setFixedWidth(30)
-#        self.edtI1Col.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        self.edtICol.setFixedWidth(50)
+        self.edtICol.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        
+        self.edtI2Col.setFixedWidth(50)
+        self.edtI2Col.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
 #        self.edtFluoCols.setFixedWidth(175)
 #        self.edtFluoCols.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
@@ -337,49 +341,38 @@ class MyWindow(QtGui.QMainWindow):
         g1.addWidget(self.chkDataTypeXes)
         g1.addWidget(self.chkDataTypeExafs)
         g1.addWidget(self.chkDataTypeTrans)
-#        g1.addWidget(self.lblEnergyCol)
-#        g1.addWidget(self.edtEnergyCol)
-#        g1.addWidget(self.lblExafsCol)
-#        g1.addWidget(self.edtExafsCol) 
+
         
         g2.addWidget(self.chkCalcMju)
-#        g2.addWidget(self.lblI0Col)
-#        g2.addWidget(self.edtI0Col)
-#        g2.addWidget(self.lblI1Col)
-#        g2.addWidget(self.edtI1Col)
+
 
         g3.addWidget(self.chkTransOrFluo)
         g3.addWidget(self.chkTransOrFluo1)
-#        g3.addWidget(self.lblFluoCols)
-#        g3.addWidget(self.edtFluoCols)
+
 
         lopenparams = QtGui.QGridLayout()
-        lopenparams.addWidget(self.lblSkipLines, 0, 0)
-        lopenparams.addWidget(self.edtSkipLines, 0, 1)
         
-        lopenparams.addWidget(self.gb1, 1, 0, 1, 6)
+        lopenparams.addWidget(self.gb1,             0, 0, 1, 8)
         
-        lopenparams.addWidget(self.lblDataX, 2, 0)
-        lopenparams.addWidget(self.edtEnergyCol, 2, 1)
-        lopenparams.addWidget(self.lblDataY, 2, 2)
-        lopenparams.addWidget(self.edtExafsCol, 2, 3)
-        lopenparams.addWidget(self.lblDataY1, 2, 4)
-        lopenparams.addWidget(self.edtRefCol, 2, 5)
+        lopenparams.addWidget(self.lblSkipLines,    1, 0, alignment=QtCore.Qt.AlignRight)
+        lopenparams.addWidget(self.edtSkipLines,    1, 1, alignment=QtCore.Qt.AlignLeft)        
+        lopenparams.addWidget(self.lblDataX,        1, 2, alignment=QtCore.Qt.AlignRight)
+        lopenparams.addWidget(self.edtEnergyCol,    1, 3, alignment=QtCore.Qt.AlignLeft)
+        lopenparams.addWidget(self.lblDataY,        1, 4, alignment=QtCore.Qt.AlignRight)
+        lopenparams.addWidget(self.edtExafsCol,     1, 5, alignment=QtCore.Qt.AlignLeft)
+        lopenparams.addWidget(self.lblDataY1,       1, 6, alignment=QtCore.Qt.AlignRight)
+        lopenparams.addWidget(self.edtRefCol,       1, 7, alignment=QtCore.Qt.AlignLeft)
 
-        lopenparams.addWidget(self.gb2, 3, 0, 1, 2)
-        lopenparams.addWidget(self.gb3, 3, 3, 1, 3)
+        lopenparams.addWidget(self.gb2,             2, 0, 1, 3)
+        lopenparams.addWidget(self.gb3,             2, 3, 1, 5)
         
-        lopenparams.addWidget(self.lblI0Col, 4, 0)
-        lopenparams.addWidget(self.edtI0Col, 4, 1)
-        lopenparams.addWidget(self.lblI1Col, 4, 2)        
-        lopenparams.addWidget(self.edtICol, 4, 3)
-        lopenparams.addWidget(self.lblI2Col, 4, 4)
-        lopenparams.addWidget(self.edtI2Col, 4, 5)
-        lopenparams.addWidget(self.edtFluoCols, 4, 3)
-        
-        
-#        lopenparams.addWidget(self.lblFluoCols, 3,2)
-#        lopenparams.addWidget(self.edtFluoCols, 3,3, 1, 3)
+        lopenparams.addWidget(self.lblI0Col,        3, 0, alignment=QtCore.Qt.AlignRight)
+        lopenparams.addWidget(self.edtI0Col,        3, 1, alignment=QtCore.Qt.AlignLeft)
+        lopenparams.addWidget(self.lblI1Col,        3, 2, alignment=QtCore.Qt.AlignRight)        
+        lopenparams.addWidget(self.edtICol,         3, 3, 1, 3, alignment=QtCore.Qt.AlignLeft)
+        lopenparams.addWidget(self.lblI2Col,        3, 6, alignment=QtCore.Qt.AlignRight)
+        lopenparams.addWidget(self.edtI2Col,        3, 7, alignment=QtCore.Qt.AlignLeft)
+        lopenparams.addWidget(self.edtFluoCols,     3, 3, 1, 3, alignment=QtCore.Qt.AlignLeft)
 
         lh = QtGui.QHBoxLayout()
         
@@ -1047,9 +1040,9 @@ class MyWindow(QtGui.QMainWindow):
         
 #        #apply file format settings
         self.skiplines = int(self.edtSkipLines.text())
-        self.i0col = int(self.edtI0Col.text())
-        self.i1col = int(self.edtICol.text())
-        self.i2col = int(self.edtI2Col.text())
+        self.i0col = fromstring(self.edtI0Col.text(), dtype=int, sep=' ')
+        self.i1col = fromstring(self.edtICol.text(), dtype=int, sep=' ')
+        self.i2col = fromstring(self.edtI2Col.text(), dtype=int, sep=' ')
         self.energycol = int(self.edtEnergyCol.text())
         self.exafscol = int(self.edtExafsCol.text())
         self.refcol = int(self.edtRefCol.text())
@@ -1163,28 +1156,42 @@ class MyWindow(QtGui.QMainWindow):
                 sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
                 sel_item.setForeground(QtCore.Qt.blue)
 
-    ############### Calculate Mju   #########
+### Calculate Mju   #########
             if self.chkDataTypeMju.isChecked(): #mju
                 if self.chkCalcMju.isChecked():
                     if self.exafs_fluo == 0: # xas
                         self.dataClasses.append(xaesa_exafs_class(0))
                         self.dataClasses[-1].name = fn1[i]
                         try:
-                            self.dataClasses[-1].energy, \
-                            self.dataClasses[-1].i0, \
+                            self.dataClasses[-1].energy = genfromtxt(str(self.fn[i]),
+                                                                     comments = "#",
+                                                                     skip_header = self.skiplines, 
+                                                                     usecols=(self.energycol), 
+                                                                     unpack=True)
+                            self.dataClasses[-1].i0 = genfromtxt(str(self.fn[i]),
+                                                        comments = "#",
+                                                        skip_header = self.skiplines, 
+                                                        usecols=self.i0col, 
+                                                        unpack=True)
+                            if len(self.i0col)>1:
+                                self.dataClasses[-1].i0 = sum(self.dataClasses[-1].i0, axis=0)
                             self.dataClasses[-1].i1 = genfromtxt(str(self.fn[i]),
                                                         comments = "#",
                                                         skip_header = self.skiplines, 
-                                                        usecols=(self.energycol, self.i0col, self.i1col), 
+                                                        usecols=self.i1col, 
                                                         unpack=True)
-
+                            if len(self.i1col)>1:
+                                self.dataClasses[-1].i1 = sum(self.dataClasses[-1].i1, axis=0)
+    
                             if self.i2col != -1:
                                 self.dataClasses[-1].i2 = genfromtxt(str(self.fn[i]),
                                                                      comments="#",
                                                                      skip_header=self.skiplines,
-                                                                     usecols=(self.i2col),
+                                                                     usecols=self.i2col,
                                                                      unpack=True)
-
+                                if len(self.i2col)>1:
+                                    self.dataClasses[-1].i2 = sum(self.dataClasses[-1].i2, axis=0)
+    
                             if self.dataClasses[-1].energy[0] < 100: #if energy is in keV
                                 self.dataClasses[-1].energy *= 1000
                         except:
@@ -1203,10 +1210,25 @@ class MyWindow(QtGui.QMainWindow):
                         self.dataClasses.append(xaesa_exafs_class(1))
                         self.dataClasses[-1].name = fn1[i]
                         
-                        self.dataClasses[-1].energy, \
-                        self.dataClasses[-1].i0 = genfromtxt(str(self.fn[i]), comments = "#", skip_header = self.skiplines, usecols=(self.energycol, self.i0col), unpack=True)
+                        self.dataClasses[-1].energy = genfromtxt(str(self.fn[i]), 
+                                                             comments = "#", 
+                                                             skip_header = self.skiplines, 
+                                                             usecols=(self.energycol), 
+                                                             unpack=True)
                         
-                        self.dataClasses[-1].ifluo = genfromtxt(str(self.fn[i]), comments = "#", skip_header = self.skiplines, usecols=self.fluocol, unpack=True)
+                        self.dataClasses[-1].i0 = genfromtxt(str(self.fn[i]), 
+                                                             comments = "#", 
+                                                             skip_header = self.skiplines, 
+                                                             usecols=self.i0col, 
+                                                             unpack=True)
+                        if len(self.i0col)>1:
+                            self.dataClasses[-1].i0 = sum(self.dataClasses[-1].i0, axis=0)
+                        
+                        self.dataClasses[-1].ifluo = genfromtxt(str(self.fn[i]), 
+                                                                comments = "#", 
+                                                                skip_header = self.skiplines, 
+                                                                usecols=self.fluocol, 
+                                                                unpack=True)
                         
                         if self.dataClasses[-1].ifluo.ndim == 1:
                             self.dataClasses[-1].ifluo = asarray([self.dataClasses[-1].ifluo])
@@ -1223,7 +1245,7 @@ class MyWindow(QtGui.QMainWindow):
                         sel_item = self.lstSpectra.item(self.lstSpectra.count()-1)
                         sel_item.setForeground(QtCore.Qt.darkGreen)
                         
-    ###############  Mju from file  ########               
+### Mju from file  ########               
                 else:
                     self.dataClasses.append(xaesa_exafs_class(2)) # mju
                     self.dataClasses[-1].name = fn1[i]
@@ -3849,6 +3871,8 @@ Remove decreasing data points automaticly ?")
         if self.chkDataTypeMju.isChecked():
             self.lblDataX.setText("Energy")
             self.lblDataY.setText("mu")
+            self.edtRefCol.show()
+            self.lblDataY1.show()
             self.gb2.show()
             if self.chkCalcMju.isChecked():
                 self.gb3.show()
@@ -3859,13 +3883,13 @@ Remove decreasing data points automaticly ?")
                 self.edtICol.show()
                 self.edtI2Col.show()
                 if self.chkTransOrFluo.isChecked(): #transmission selected
-                    self.lblI1Col.setText("I1 column")
+                    self.lblI1Col.setText("I1")
                     self.edtFluoCols.hide()
                     self.edtICol.show()
                 else: #Fluorescence selected
                     self.edtFluoCols.show()
                     self.edtICol.hide()
-                    self.lblI1Col.setText("Fluo columns")
+                    self.lblI1Col.setText("I fluo")
                     
             else:
                 self.gb3.hide()
@@ -3884,9 +3908,13 @@ Remove decreasing data points automaticly ?")
             self.gb3.hide()
             self.lblI0Col.hide()
             self.lblI1Col.hide()
+            self.lblI2Col.hide()
             self.edtI0Col.hide()
             self.edtICol.hide()
+            self.edtI2Col.hide()
             self.edtFluoCols.hide()
+            self.edtRefCol.hide()
+            self.lblDataY1.hide()
         
         if self.chkDataTypeExafs.isChecked():
             self.lblDataX.setText("k")
@@ -3895,9 +3923,13 @@ Remove decreasing data points automaticly ?")
             self.gb3.hide()
             self.lblI0Col.hide()
             self.lblI1Col.hide()
+            self.lblI2Col.hide()
             self.edtI0Col.hide()
             self.edtICol.hide()
+            self.edtI2Col.hide()
             self.edtFluoCols.hide()
+            self.edtRefCol.hide()
+            self.lblDataY1.hide()
         
         if self.chkDataTypeTrans.isChecked():
             self.lblDataX.setText("Energy")
@@ -3906,9 +3938,13 @@ Remove decreasing data points automaticly ?")
             self.gb3.hide()
             self.lblI0Col.hide()
             self.lblI1Col.hide()
+            self.lblI2Col.hide()
             self.edtI0Col.hide()
             self.edtICol.hide()
+            self.edtI2Col.hide()
             self.edtFluoCols.hide()
+            self.edtRefCol.hide()
+            self.lblDataY1.hide()
             
     def saveGUISettings(self):
         settings = QtCore.QSettings('dev', GUI_SETTINGS_ID)

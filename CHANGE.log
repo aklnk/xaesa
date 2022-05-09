@@ -12,3 +12,6 @@ Automatic energy scale shift according to the reference spectrum
 Changed averaging procedure
 Adding hdf5 filel name to window title when opening or saving projects
 Bug in opening fit window when k range was changed
+
+2022-05-09
+Added option to average N columns for I0, I1 and I2 when opening ascii files
