@@ -15,3 +15,9 @@ Bug in opening fit window when k range was changed
 
 2022-05-09
 Added option to average N columns for I0, I1 and I2 when opening ascii files
+
+2022-12-01
+Energy lines color coded
+mu0 line new algorithm when polinomial degree set to negative values
+Energy value changes using mouse scroll
+tool tips
