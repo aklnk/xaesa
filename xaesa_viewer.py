@@ -45,7 +45,7 @@ class xaesa_viewer(QtGui.QWidget):
         
     def initUI(self):
         #Figures 
-        self.fig = plt.figure(1, figsize=(15, 6))
+        self.fig = plt.figure(2, figsize=(15, 6))
         # self.ax_exafs = self.fig.add_subplot(111)
 
         self.canv = FigureCanvas(self.fig)
@@ -167,7 +167,7 @@ class xaesaViewerWindow(QtGui.QDialog):
         super(xaesaViewerWindow, self).closeEvent(event)    
         
     def cancel(self):
-        #do whatever you need with self.roiGroups    
+        plt.close(2) 
         self.close()
 #        
 #if __name__ == '__main__':

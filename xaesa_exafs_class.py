@@ -6,10 +6,10 @@ Created on Tue Feb 13 11:55:12 2018
 """
 import sys
 import os
-from numpy import   arange, argmin, argmax, asarray, concatenate, copy, delete, \
+from numpy import   arange, argmin, argmax, argsort, asarray, concatenate, copy, delete, \
                     gradient, log, logical_and, multiply, newaxis, pi, power, \
                     sin, cos, sqrt, sum, where, zeros, unique, ones, convolve, \
-                    isnan, polyfit, polyval
+                    isnan, polyfit, polyval, r_
 
 from scipy.optimize import curve_fit
 from scipy.interpolate import Rbf, InterpolatedUnivariateSpline, UnivariateSpline
@@ -23,6 +23,10 @@ from .xaesa_constants_formulas import victoreen, windowGauss10, \
                                          me, hbar
                                          
 from .xaesa_ft import FT, BFT, GETPHASE, BFTWindow
+
+from interpolation_k2 import LSQ_ZeroLine, extend_zeroline
+
+from scipy.interpolate import make_lsq_spline
 
 #import xalglib
 
@@ -251,23 +255,48 @@ class xaesa_exafs_class():
         self.mjuMinusVictoreen = self.mju - self.victoreen
         
     def findMju0(self):
-                
-        whereE2E3 = where( logical_and(self.energy > self.E2, self.energy < self.E3) )
+        
+        whereE2E3 = where( logical_and(self.energy > self.E2, self.energy < self.E3) )       
+        
+        if self.mju0PolinomialDegree >= 0:
     
-        energyToFit = self.energy[whereE2E3]
-        mjuToFit =  self.mjuMinusVictoreen[whereE2E3]
-         
-                
-        polynomial_features = PolynomialFeatures(self.mju0PolinomialDegree,
-                                                 include_bias=True)
-        linear_regression = LinearRegression()
+            energyToFit = self.energy[whereE2E3]
+            mjuToFit =  self.mjuMinusVictoreen[whereE2E3]
+             
+            polynomial_features = PolynomialFeatures(self.mju0PolinomialDegree,
+                                                     include_bias=True)
+            linear_regression = LinearRegression()
+        
+            pipeline = Pipeline([("polynomial_features", polynomial_features),
+                                 ("linear_regression", linear_regression)])
     
-        pipeline = Pipeline([("polynomial_features", polynomial_features),
-                             ("linear_regression", linear_regression)])
-
-        pipeline.fit(energyToFit[:, newaxis], mjuToFit)
-
-        self.mju0 = pipeline.predict(self.energy[:, newaxis])
+            pipeline.fit(energyToFit[:, newaxis], mjuToFit)
+    
+            self.mju0 = pipeline.predict(self.energy[:, newaxis])
+            
+        else:
+            whereE0E3 = where( logical_and(self.energy > self.E0, self.energy < self.E3) )
+            
+            energyToFit = self.energy[whereE2E3]
+            mjuToFit =  self.mjuMinusVictoreen[whereE2E3]
+            
+            l = len(energyToFit)
+            mid = int(l/2)
+            left = int(l/4)
+            right = int(l/4 *3)
+            
+            t = [energyToFit[left], energyToFit[mid], energyToFit[right]]
+            k = abs(self.mju0PolinomialDegree)
+            t = r_[(energyToFit[0],)*(k+1),
+                      t,
+                      (energyToFit[-1],)*(k+1)]
+            
+            w = power((energyToFit - energyToFit[0]) + 1, 3/2)
+            
+            spl = make_lsq_spline(energyToFit, mjuToFit, t, k, w=w)
+            
+            self.mju0 = spl(self.energy[whereE0E3])
+            
         
     def calculateEXAFS(self):
 
@@ -275,10 +304,12 @@ class xaesa_exafs_class():
     
         energyE0E3 = self.energy[whereE0E3]
         mjuE0E3 =  self.mjuMinusVictoreen[whereE0E3]
-        mju0E0E3 =  self.mju0[whereE0E3]
+        if self.mju0PolinomialDegree >= 0: mju0E0E3 =  self.mju0[whereE0E3]
+        if self.mju0PolinomialDegree < 0: mju0E0E3 =  self.mju0
         if self.normalizationMode==0: #mju0 normalization
     #        mju0E0E3 =  mju0[whereE0E3]
-            mju0E0E3_1 =  self.mju0[whereE0E3]
+            # mju0E0E3_1 =  self.mju0[whereE0E3]
+            mju0E0E3_1 = mju0E0E3
         if self.normalizationMode==1:
             idx = argmin(abs(self.energy - self.normalizationEnergy))
             mju0E0E3_1 = zeros(len(energyE0E3)) + self.mju0[idx]
@@ -685,14 +716,4 @@ class xaesa_exafs_class():
         
     def redoBft(self):
         self.bftEXAFSZLC()
-        
-
-        
-        
-
-            
-        
-
-
-
-        
+    

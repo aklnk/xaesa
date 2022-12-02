@@ -5,7 +5,7 @@
 #@author: sasha
 #"""
 
-XAESA_VERSION = "0.06"
+XAESA_VERSION = "0.07"
 GUI_SETTINGS_ID = "XAESA" + XAESA_VERSION
 
 import sys
@@ -23,6 +23,8 @@ from .xaesa_xes_class import xaesa_xes_class, xaesa_transient_class
 from .xaesa_settings import xaesa_settings
 from .xaesa_viewer import xaesa_viewer, xaesaViewerWindow
 from .xaesa_rxes import xaesa_rxes, xaesaRxesWindow
+import modified_widgets as modwid
+import tooltiptexts as ttt
 
 import h5py
 import copy as c
@@ -103,8 +105,8 @@ class MyWindow(QtGui.QMainWindow):
         self.energycol = 0
         self.exafscol = 1
         self.refcol = -1
-        self.i0col = 7
-        self.i1col = 8
+        self.i0col = 1
+        self.i1col = 2
         self.i2col = -1
         
         self.fluocol = [11,12,13,15,16,17]
@@ -386,7 +388,9 @@ class MyWindow(QtGui.QMainWindow):
     #####################         XAS FIGURES
         #Figures 
         self.fig = plt.figure(0)
-        self.ax_abs = plt.subplot2grid((2,3), (0,0))
+
+        self.ax_abs2 = plt.subplot2grid((2,3), (0,0), fig=self.fig)
+        self.ax_abs = self.ax_abs2.twinx()
         
         #init lines
         self.abs_scatter, = self.ax_abs.plot([], [], 'o', picker=True)
@@ -394,26 +398,49 @@ class MyWindow(QtGui.QMainWindow):
 
         self.mjub_line, self.mju0_mjub_line = self.ax_abs.plot([], [], [], [])
 
-        self.mjub_line.set_color('g')
-        self.mju0_mjub_line.set_color('g')
+        self.mjub_line.set_color('orange')
+        self.mju0_mjub_line.set_color('orange')
         
-        self.ax_abs2 = self.ax_abs.twinx()
-        
+                
         self.deriv_line, = self.ax_abs2.plot([],[])
         self.deriv_line.set_color('b')
         self.deriv_line.set_alpha(0.3)
 
-        self.lineEs = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
-        self.lineE0 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
-        self.lineE1 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
-        self.lineE2 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
-        self.lineE3 = self.ax_abs.axvline(0, color='g', linestyle='--', lw=1)
+        self.lineEs = self.ax_abs.axvline(0, color='firebrick', linestyle='--', 
+                                             lw=2,
+                                             picker=True, 
+                                             pickradius=2)
+        
+        self.lineE0 = self.ax_abs.axvline(0, color='deeppink', linestyle='--', 
+                                             lw=2,
+                                             picker=True, 
+                                             pickradius=2)
+        
+        self.lineE1 = self.ax_abs.axvline(0, color='olive', linestyle='--', 
+                                             lw=2, 
+                                             picker=True, 
+                                             pickradius=2)
+        
+        self.lineE2 = self.ax_abs.axvline(0, color='steelblue', linestyle='--', 
+                                             lw=2, 
+                                             picker=True, 
+                                             pickradius=2)
+        
+        self.lineE3 = self.ax_abs.axvline(0, color='purple', linestyle='--', 
+                                             lw=2, 
+                                             picker=True, 
+                                             pickradius=2)
+        
+        # drag and drop E lines
+        # self.c = self.ax_abs.get_figure().canvas
+        # self.sid = self.c.mpl_connect('pick_event', self.pick_a_line)
+        self.fig.canvas.mpl_connect('pick_event', self.pick_a_line)
         
         self.ax_abs.set_xlabel('Energy, eV')
         self.ax_abs.set_ylabel('Absorption, a.u.')
         
         
-        self.ax_exafs = plt.subplot2grid((2,3), (1,0))
+        self.ax_exafs = plt.subplot2grid((2,3), (1,0), fig=self.fig)
         
 
         self.exafs_line, = self.ax_exafs.plot([], [], label = "EXAFS")
@@ -425,7 +452,7 @@ class MyWindow(QtGui.QMainWindow):
         
         self.ax_exafs.axhline(y=0, linewidth=1, color = 'k')
 
-        self.ax_exafssm = plt.subplot2grid((2,3), (0,1), colspan=2)
+        self.ax_exafssm = plt.subplot2grid((2,3), (0,1), colspan=2, fig=self.fig)
         
         self.ax_exafssm.axhline(y=0, linewidth=1, color = 'k')
         
@@ -442,7 +469,7 @@ class MyWindow(QtGui.QMainWindow):
         self.ax_exafsm_legend = self.ax_exafssm.legend(handles=[self.exafsd_line, self.bftexafs_line])
         
         
-        self.ax_ft = plt.subplot2grid((2,3), (1,1), colspan=2)
+        self.ax_ft = plt.subplot2grid((2,3), (1,1), colspan=2, fig=self.fig)
         
         
         self.efr_line, self.efi_line = self.ax_ft.plot( [],  [], [],  [], label = "FT")
@@ -471,7 +498,7 @@ class MyWindow(QtGui.QMainWindow):
         
         self.fig.tight_layout()
         
-        self.fig.canvas.mpl_connect('pick_event', self.onpick3)
+        # self.fig.canvas.mpl_connect('pick_event', self.onpick3)
         
         self.ax_ft.axhline(y=0, linewidth=1, color = 'k')
 
@@ -488,7 +515,7 @@ class MyWindow(QtGui.QMainWindow):
         
 #XAS FIGURES END
         
-    ##################             XES FIGURES
+###             XES FIGURES
 
         self.figXes = plt.figure(11)
         self.ax_xes = plt.subplot2grid((2,2), (0,0))
@@ -567,7 +594,7 @@ class MyWindow(QtGui.QMainWindow):
         
 #XES FIGURES END
         
-    ######################   XES parameters
+######################   XES parameters
         lblE0xes = QtGui.QLabel("E0")
         lblE1xes = QtGui.QLabel("E1")
         lblE2xes = QtGui.QLabel("E2")
@@ -587,6 +614,8 @@ class MyWindow(QtGui.QMainWindow):
         self.edtXesE1.returnPressed.connect(self.xesExtractRedo)
         self.edtXesE2.returnPressed.connect(self.xesExtractRedo)
         self.edtXesE3.returnPressed.connect(self.xesExtractRedo)
+        
+        
         
         self.edtXesEANormMin.returnPressed.connect(self.xesExtractRedo)
         self.edtXesEANormMax.returnPressed.connect(self.xesExtractRedo)
@@ -678,11 +707,11 @@ class MyWindow(QtGui.QMainWindow):
         self.lblsm = QtGui.QLabel("Zero-line correction (zlc)")
         self.lblmju0poldegree = QtGui.QLabel("Mu0 polynomial")
         self.lblBckgDegree = QtGui.QLabel("Backgr polynomial (-1 - Vectoreen)")
-        self.edtEs = QtGui.QLineEdit()
-        self.edtE0 = QtGui.QLineEdit()
-        self.edtE1 = QtGui.QLineEdit()
-        self.edtE2 = QtGui.QLineEdit()
-        self.edtE3 = QtGui.QLineEdit()
+        self.edtEs = modwid.QLineEditScroll()
+        self.edtE0 = modwid.QLineEditScroll()
+        self.edtE1 = modwid.QLineEditScroll()
+        self.edtE2 = modwid.QLineEditScroll()
+        self.edtE3 = modwid.QLineEditScroll()
         self.edtExafsNormEnergy = QtGui.QLineEdit()
         self.edtkpow = QtGui.QLineEdit("2")
         self.edtEnergyShift = QtGui.QLineEdit("0")
@@ -693,8 +722,15 @@ class MyWindow(QtGui.QMainWindow):
         self.btnDeglitching = QtGui.QPushButton('Remove glitches ...')
         self.btnDeglitching.clicked.connect(self.removeglitches)
         
+        self.lblEs.setStyleSheet("color:#B22222;");
+        self.lblE0.setStyleSheet("color:#FF1493;");
+        self.lblE1.setStyleSheet("color:#808000;");
+        self.lblE2.setStyleSheet("color:#4682B4;");
+        self.lblE3.setStyleSheet("color:#800080;");
         
-        
+        self.edtEs.setToolTip(ttt.xas_es)
+        self.edtE3.setToolTip(ttt.xas_e3)
+
         lparams = QtGui.QGridLayout()
         lparams1 = QtGui.QHBoxLayout()
         lparams1.addWidget(self.lblEs)
@@ -731,7 +767,6 @@ class MyWindow(QtGui.QMainWindow):
         lparams3.addWidget(self.btnDeglitching)
         
         lparams.addLayout(lparams3, 3,0,1,4)
-        
         
         self.edtEs.returnPressed.connect(self.extractParamsChange)
         self.edtE0.returnPressed.connect(self.extractParamsChange)
@@ -959,7 +994,7 @@ class MyWindow(QtGui.QMainWindow):
         self.initialdir = ""
         
         self.fig.tight_layout()
-        self.fig.canvas.mpl_connect('pick_event', self.onpick)
+        # self.fig.canvas.mpl_connect('pick_event', self.onpick)
         self.canv.draw()
         
         self.adaptOpeningParams()
@@ -1917,8 +1952,16 @@ class MyWindow(QtGui.QMainWindow):
             self.abs_scatter.set_ydata(self.dataClasses[cnr].mju)
             self.mjub_line.set_xdata(self.dataClasses[cnr].energy)
             self.mjub_line.set_ydata(self.dataClasses[cnr].victoreen)
-            self.mju0_mjub_line.set_xdata(self.dataClasses[cnr].energy)
-            self.mju0_mjub_line.set_ydata(self.dataClasses[cnr].mju0+self.dataClasses[cnr].victoreen)
+            
+            whereE0E3 = where( logical_and(self.dataClasses[cnr].energy > self.dataClasses[cnr].E0, 
+                                           self.dataClasses[cnr].energy < self.dataClasses[cnr].E3) )
+            if self.dataClasses[cnr].mju0PolinomialDegree >= 0:
+                mju0 = self.dataClasses[cnr].mju0[whereE0E3]
+            else:
+                mju0 = self.dataClasses[cnr].mju0
+            self.mju0_mjub_line.set_xdata(self.dataClasses[cnr].energy[whereE0E3])
+            self.mju0_mjub_line.set_ydata(mju0+self.dataClasses[cnr].victoreen[whereE0E3])
+            
             self.deriv_line.set_xdata(self.dataClasses[cnr].energy)
             self.deriv_line.set_ydata(self.dataClasses[cnr].mjuDerivative)
             self.lineEs.set_xdata(self.dataClasses[cnr].Es)
@@ -2905,6 +2948,33 @@ class MyWindow(QtGui.QMainWindow):
         cw.plot()        
         
         cw.exec_()
+        
+    def pick_a_line(self, event):
+        print('pick')
+        if event.artist in [self.lineEs,self.lineE0,self.lineE1,self.lineE2,self.lineE3]:
+            print("line selected ", event.artist)
+            self.line_to_drag = event.artist
+            self.follower = self.fig.canvas.mpl_connect("motion_notify_event", self.followmouse)
+            self.releaser = self.fig.canvas.mpl_connect("button_press_event", self.releaseonclick)
+            
+    def followmouse(self, event):
+        self.line_to_drag.set_xdata([event.xdata, event.xdata])
+        self.fig.canvas.draw_idle()
+
+    def releaseonclick(self, event):
+        XorY = self.line_to_drag.get_xdata()[0]
+        self.fig.canvas.mpl_disconnect(self.releaser)
+        self.fig.canvas.mpl_disconnect(self.follower)
+        
+        cnr = self.current
+        if self.line_to_drag==self.lineEs: self.dataClasses[cnr].Es=XorY
+        if self.line_to_drag==self.lineE0: self.dataClasses[cnr].E0=XorY
+        if self.line_to_drag==self.lineE1: self.dataClasses[cnr].E1=XorY
+        if self.line_to_drag==self.lineE2: self.dataClasses[cnr].E2=XorY
+        if self.line_to_drag==self.lineE3: self.dataClasses[cnr].E3=XorY
+        
+        self.dataClasses[cnr].redoExtraction()
+        self.lstSpectraItemClicked()
         
     def onpick3(self, event):
         

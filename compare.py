@@ -181,6 +181,7 @@ class CompareWindow(QtGui.QDialog):
         
     def cancel(self):
         #do whatever you need with self.roiGroups  
+        plt.close(1)
         self.close()
         
     def onpick(self, event):

@@ -247,6 +247,8 @@ class FitWindow(QtGui.QDialog):
         self.btnOpenPha.clicked.connect(self.openpha)
         self.btnOpenFeff = QtGui.QPushButton('Open feff file(s) ...')
         self.btnOpenFeff.clicked.connect(self.openfeff)
+        self.btnCalcFeff = QtGui.QPushButton('Calculatye feff file(s) ...')
+        self.btnCalcFeff.clicked.connect(self.calcfeff)
         
         self.btnSaveFitResults = QtGui.QPushButton('Save fit Results ...')
 #        self.btnSaveFitResults.clicked.connect(self.saveFitResults)
@@ -255,6 +257,7 @@ class FitWindow(QtGui.QDialog):
         lb.addWidget(self.btnOpenAmp, 0,0)
         lb.addWidget(self.btnOpenPha, 0,1)
         lb.addWidget(self.btnOpenFeff, 1,0)
+        lb.addWidget(self.btnCalcFeff, 1,1)
         lb.addWidget(self.btnAddShell, 2,0)
         lb.addWidget(self.btnRemoveShell, 2,1)
         
@@ -697,6 +700,7 @@ class FitWindow(QtGui.QDialog):
             data = []
             f = open(self.fnfeff[i])
             for line in f:
+                print(line)
                 cols = line.split()
                 if cols[0] == '-----------------------------------------------------------------------':
                     state = 1
@@ -727,6 +731,10 @@ class FitWindow(QtGui.QDialog):
                 self.shellAmp[j].addItem(self.fnfeff[i] + '.amp')
             for j in range(len(self.shellPha)):
                 self.shellPha[j].addItem(self.fnfeff[i] + '.pha')
+                
+    def calcfeff(self):
+        #TODO
+        pass
             
     def addshell(self):
         self.tabs.append(QtGui.QFrame())
